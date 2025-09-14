@@ -138,12 +138,150 @@ npm run dev
 
 ### 4. Database Setup
 ```sql
--- Create database
-CREATE DATABASE asset_inventory;
+-- Asset Inventory Management System Database Schema
+-- Database: ims
 
--- Create admin user (run after migrations)
-INSERT INTO users (username, password, role, email) 
-VALUES ('admin', '$hashed_password', 'admin', 'admin@company.com');
+-- Main Assets Table
+CREATE TABLE `assets` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `serial_number` varchar(100) NOT NULL,
+  `hardware_type` varchar(50) NOT NULL,
+  `model_number` varchar(50) DEFAULT NULL,
+  `owner_fullname` varchar(100) NOT NULL,
+  `hostname` varchar(100) DEFAULT NULL,
+  `p_number` varchar(50) DEFAULT NULL,
+  `cadre` varchar(50) NOT NULL,
+  `department` varchar(50) NOT NULL,
+  `section` varchar(50) DEFAULT NULL,
+  `building` varchar(50) DEFAULT NULL,
+  `vendor` varchar(100) DEFAULT NULL,
+  `po_number` varchar(50) DEFAULT NULL,
+  `po_date` date DEFAULT NULL,
+  `dc_number` varchar(50) DEFAULT NULL,
+  `dc_date` date DEFAULT NULL,
+  `assigned_date` date DEFAULT NULL,
+  `replacement_due_period` varchar(50) DEFAULT NULL,
+  `replacement_due_date` date DEFAULT NULL,
+  `operational_status` varchar(50) NOT NULL,
+  `disposition_status` varchar(50) NOT NULL,
+  `asset_id` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Asset History Table
+CREATE TABLE `asset_history` (
+  `history_id` int(11) NOT NULL AUTO_INCREMENT,
+  `transfer_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `asset_id` int(11) NOT NULL,
+  `serial_number` varchar(50) NOT NULL,
+  `hardware_type_model` varchar(150) NOT NULL,
+  `previous_owner` varchar(100) NOT NULL,
+  `new_owner` varchar(100) NOT NULL,
+  `transfer_reason` varchar(255) DEFAULT NULL,
+  `transferred_by` int(11) NOT NULL,
+  PRIMARY KEY (`history_id`),
+  KEY `asset_id` (`asset_id`),
+  KEY `transferred_by` (`transferred_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Asset Transfers Table
+CREATE TABLE `asset_transfers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `asset_id` int(11) NOT NULL,
+  `asset_serial_number` varchar(100) DEFAULT NULL,
+  `previous_owner_fullname` varchar(100) NOT NULL,
+  `previous_hostname` varchar(100) NOT NULL,
+  `previous_p_number` varchar(50) NOT NULL,
+  `previous_cadre` varchar(50) NOT NULL,
+  `previous_department` varchar(50) NOT NULL,
+  `previous_section` varchar(50) DEFAULT NULL,
+  `previous_building` varchar(50) DEFAULT NULL,
+  `new_owner_fullname` varchar(100) NOT NULL,
+  `new_hostname` varchar(100) NOT NULL,
+  `new_p_number` varchar(50) NOT NULL,
+  `new_cadre` varchar(50) NOT NULL,
+  `new_department` varchar(50) NOT NULL,
+  `new_section` varchar(50) DEFAULT NULL,
+  `new_building` varchar(50) DEFAULT NULL,
+  `transfer_reason` varchar(255) NOT NULL,
+  `transfer_date` datetime DEFAULT current_timestamp(),
+  `transferred_by` varchar(255) DEFAULT NULL,
+  `transferred_by_user_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `asset_id` (`asset_id`),
+  KEY `idx_transferred_by_user_id` (`transferred_by_user_id`),
+  CONSTRAINT `asset_transfers_ibfk_1` FOREIGN KEY (`asset_id`) REFERENCES `assets` (`id`),
+  CONSTRAINT `fk_transferred_by_user` FOREIGN KEY (`transferred_by_user_id`) REFERENCES `user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- User Management Table
+CREATE TABLE `user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('admin','user') NOT NULL DEFAULT 'user',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('active','blocked') DEFAULT 'active',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Reference Tables for Dropdowns/Categories
+
+CREATE TABLE `hardware_type` (
+  `type_id` int(11) NOT NULL AUTO_INCREMENT,
+  `type_name` varchar(100) NOT NULL,
+  PRIMARY KEY (`type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `department` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `sections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `cadres` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `building` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `vendors` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `models` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `operational_status` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `disposition_status` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 ```
 
 ## ⚙️ Configuration
