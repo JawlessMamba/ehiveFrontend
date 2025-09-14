@@ -1,12 +1,82 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import ExportDropdown from './ExportDropdown';
 
+// Mock filter options data
+const mockFilterOptions = {
+  departments: [
+    "Information Technology",
+    "Human Resources", 
+    "Finance",
+    "Operations",
+    "Marketing",
+    "Administration",
+    "Engineering",
+    "Quality Assurance"
+  ],
+  hardware_types: [
+    "Desktop",
+    "Laptop", 
+    "Server",
+    "Printer",
+    "Network Equipment",
+    "Monitor",
+    "Mobile Device",
+    "Storage Device"
+  ],
+  cadres: [
+    "Officer",
+    "Manager",
+    "Executive", 
+    "Analyst",
+    "Specialist",
+    "Coordinator",
+    "Supervisor",
+    "Director"
+  ],
+  buildings: [
+    "Main Building",
+    "Annex A",
+    "Annex B", 
+    "Data Center",
+    "Warehouse",
+    "Branch Office",
+    "Training Center",
+    "Guest House"
+  ],
+  sections: [
+    "Development",
+    "Testing",
+    "Support",
+    "Security",
+    "Network",
+    "Database",
+    "Infrastructure",
+    "Research"
+  ],
+  operational_statuses: [
+    "active",
+    "inactive", 
+    "maintenance",
+    "surplus",
+    "repair",
+    "testing"
+  ],
+  disposition_statuses: [
+    "assigned",
+    "available",
+    "disposed", 
+    "transferred",
+    "pending",
+    "retired"
+  ]
+};
+
 // ✅ OPTIMIZED: Memoized FilterBar component with search button
 const FilterBar = memo(({
   filters,
   handleFilterChange,
   clearFilters,
-  filterOptions = {}, // Now comes from database
+  filterOptions = mockFilterOptions, // Use mock data as default
   filteredAssets,
   showExportDropdown,
   setShowExportDropdown,
@@ -69,15 +139,15 @@ const FilterBar = memo(({
     }
   }, [clearFilters]);
 
-  // ✅ OPTIMIZED: Filter options with fallbacks
+  // ✅ OPTIMIZED: Filter options with fallbacks (using mock data)
   const safeFilterOptions = useMemo(() => ({
-    departments: filterOptions.departments || [],
-    hardwareTypes: filterOptions.hardware_types || [],
-    cadres: filterOptions.cadres || [],
-    buildings: filterOptions.buildings || [],
-    sections: filterOptions.sections || [],
-    operationalStatuses: filterOptions.operational_statuses || [],
-    dispositionStatuses: filterOptions.disposition_statuses || []
+    departments: filterOptions.departments || mockFilterOptions.departments,
+    hardwareTypes: filterOptions.hardware_types || mockFilterOptions.hardware_types,
+    cadres: filterOptions.cadres || mockFilterOptions.cadres,
+    buildings: filterOptions.buildings || mockFilterOptions.buildings,
+    sections: filterOptions.sections || mockFilterOptions.sections,
+    operationalStatuses: filterOptions.operational_statuses || mockFilterOptions.operational_statuses,
+    dispositionStatuses: filterOptions.disposition_statuses || mockFilterOptions.disposition_statuses
   }), [filterOptions]);
 
   return (

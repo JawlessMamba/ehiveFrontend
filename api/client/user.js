@@ -1,36 +1,156 @@
+// api/client/user.js - MOCK VERSION
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "../axios";
-import API_ROUTE from "../endpoint";
 import { toast } from "react-toastify";
 
-// Your existing hooks remain the same...
+// Mock data
+const MOCK_USERS = [
+  {
+    id: 1,
+    email: "hello",
+    name: "Demo User",
+    role: "admin",
+    department: "IT",
+    status: "active",
+    createdAt: new Date().toISOString(),
+    avatar: "/default-avatar.png",
+    permissions: ["read", "write", "admin"]
+  },
+  {
+    id: 2,
+    email: "john.doe@company.com",
+    name: "John Doe",
+    role: "user",
+    department: "Engineering",
+    status: "active",
+    createdAt: new Date().toISOString(),
+    avatar: "/default-avatar.png",
+    permissions: ["read"]
+  },
+  {
+    id: 3,
+    email: "jane.smith@company.com",
+    name: "Jane Smith",
+    role: "manager",
+    department: "HR",
+    status: "inactive",
+    createdAt: new Date().toISOString(),
+    avatar: "/default-avatar.png",
+    permissions: ["read", "write"]
+  }
+];
+
+// Helper function to simulate API delay
+const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Mock API functions
+const mockUserApi = {
+  signUp: async (data) => {
+    await delay(1000);
+    // Simulate successful signup
+    return {
+      success: true,
+      message: "User created successfully",
+      user: {
+        id: Date.now(),
+        email: data.email,
+        name: data.name || "New User",
+        role: "user",
+        status: "active"
+      }
+    };
+  },
+
+  signIn: async (data) => {
+    await delay(1500);
+    
+    if (data.email === "hello" && data.password === "admin") {
+      const token = `mock-jwt-token-${Date.now()}`;
+      const user = MOCK_USERS.find(u => u.email === "hello");
+      
+      return {
+        success: true,
+        message: "Login successful",
+        token,
+        user
+      };
+    } else {
+      throw new Error("Invalid credentials");
+    }
+  },
+
+  getCurrentUser: async () => {
+    await delay(300);
+    
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No token found");
+    }
+
+    // Return the demo user
+    return {
+      success: true,
+      user: MOCK_USERS[0] // Demo user
+    };
+  },
+
+  getAllUsers: async () => {
+    await delay(500);
+    
+    return {
+      success: true,
+      users: MOCK_USERS
+    };
+  },
+
+  changePassword: async (data) => {
+    await delay(800);
+    
+    return {
+      success: true,
+      message: "Password changed successfully"
+    };
+  },
+
+  toggleUserStatus: async ({ userId }) => {
+    await delay(400);
+    
+    const user = MOCK_USERS.find(u => u.id === userId);
+    if (user) {
+      user.status = user.status === "active" ? "inactive" : "active";
+      return {
+        success: true,
+        message: `User ${user.status === "active" ? "activated" : "deactivated"} successfully`,
+        user
+      };
+    }
+    
+    throw new Error("User not found");
+  }
+};
+
+// Export hooks (keeping the same interface as your original)
 export function useSignUp() {
   return useMutation({
-    mutationFn: async (data) => {
-      const res = await api.post(API_ROUTE.user.signUp, data);
-      return res.data;
-    },
+    mutationFn: mockUserApi.signUp,
     onSuccess: () => {
       toast.success("User created successfully");
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || " SignUp failed");
+      toast.error(err.message || "SignUp failed");
     },
   });
 }
 
 export function useSignIn() {
   return useMutation({
-    mutationFn: async (data) => {
-      const res = await api.post(API_ROUTE.user.signIn, data);
-      return res.data;
-    },
+    mutationFn: mockUserApi.signIn,
     onSuccess: (data) => {
-      toast.success(" Login successful");
+      toast.success("Login successful");
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || " Login failed");
+      toast.error(err.message || "Login failed");
     },
   });
 }
@@ -38,21 +158,17 @@ export function useSignIn() {
 export const useGetCurrentUser = () => {
   return useQuery({
     queryKey: ["currentUser"],
-    queryFn: async () => {
-      const res = await api.get("/user/getuser");
-      return res.data;
-    },
+    queryFn: mockUserApi.getCurrentUser,
+    retry: false, // Don't retry on failure
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
-// NEW HOOKS FOR ADMIN FUNCTIONALITY
 export const useGetAllUsers = () => {
   return useQuery({
     queryKey: ["allUsers"],
-    queryFn: async () => {
-      const res = await api.get("/user/all");
-      return res.data;
-    },
+    queryFn: mockUserApi.getAllUsers,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
@@ -60,35 +176,28 @@ export function useChangeUserPassword() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (data) => {
-      const res = await api.put("/user/change-password", data);
-      return res.data;
-    },
+    mutationFn: mockUserApi.changePassword,
     onSuccess: () => {
       toast.success("Password changed successfully");
       queryClient.invalidateQueries(["allUsers"]);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || "Password change failed");
+      toast.error(err.message || "Password change failed");
     },
   });
 }
 
-// ADD this function to your existing user.js file
 export function useToggleUserStatus() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ userId }) => {
-      const res = await api.patch(`/user/toggle-status/${userId}`);
-      return res.data;
-    },
+    mutationFn: mockUserApi.toggleUserStatus,
     onSuccess: (data) => {
       toast.success(data.message);
       queryClient.invalidateQueries(["allUsers"]);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || "Status toggle failed");
+      toast.error(err.message || "Status toggle failed");
     },
   });
 }

@@ -8,17 +8,17 @@ import Inventory from '../pages/Inventory';
 import ProtectedRoute from "../components/login/ProtectedRoute";
 import SignIn from "../components/login/SignIn";
 import SignUp from "../components/login/SignUp";
-import ManageUsers from "../components/admin/ManageUsers"; // NEW IMPORT
+import ManageUsers from "../components/admin/ManageUsers";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element:
-         <ProtectedRoute>
-         <Dashboard />,
-         </ProtectedRoute>
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
   },
-
   {
     path: "/login",
     element: <SignIn />,
@@ -28,36 +28,75 @@ export const router = createBrowserRouter([
     element: <SignUp />,
   },
   
-  // NEW ROUTE FOR MANAGE USERS
+  // Admin route - this is where you'll be redirected after login
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Admin/User Management Route
   {
     path: "/manage-users",
-    element: 
+    element: (
       <ProtectedRoute>
         <ManageUsers />
-      </ProtectedRoute>,
+      </ProtectedRoute>
+    ),
   },
 
+  // Asset Management Routes
   {
     path: "/add-asset",
-    element: <AddAsset />,
+    element: (
+      <ProtectedRoute>
+        <AddAsset />
+      </ProtectedRoute>
+    ),
   },
-
   {
-    path: "/inventory",
-    element: <Inventory />,
+    path: "/inventory", 
+    element: (
+      <ProtectedRoute>
+        <Inventory />
+      </ProtectedRoute>
+    ),
   },
-
   {
     path: "/categories",
-    element: <Categories />,
+    element: (
+      <ProtectedRoute>
+        <Categories />
+      </ProtectedRoute>
+    ),
   },
-
   {
     path: "/asset-history",
-    element: <AssetHistory />,
+    element: (
+      <ProtectedRoute>
+        <AssetHistory />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/reports",
-    element: <Reports />,
+    element: (
+      <ProtectedRoute>
+        <Reports />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Catch-all route - redirect any unknown routes to dashboard
+  {
+    path: "*",
+    element: (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    ),
   },
 ]);

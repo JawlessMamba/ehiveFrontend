@@ -6,25 +6,108 @@ import Header from './common/Header';
 import Navigation from './common/Navigation';
 import Footer from './common/Footer';
 import LoadingSpinner from './common/LoadingSpinner';
-import { useCreateAsset } from '../../api/client/asset';
-import { useAllCategories } from '../../api/client/category';
+
+// Dummy data to replace API calls
+const dummyCategories = {
+  hardware_type: [
+    { id: 1, value: 'Laptop' },
+    { id: 2, value: 'Desktop' },
+    { id: 3, value: 'Server' },
+    { id: 4, value: 'Printer' },
+    { id: 5, value: 'Network Device' },
+    { id: 6, value: 'Monitor' },
+    { id: 7, value: 'Router' },
+    { id: 8, value: 'Switch' }
+  ],
+  model: [
+    { id: 1, value: 'Dell Latitude 5520' },
+    { id: 2, value: 'HP EliteBook 840' },
+    { id: 3, value: 'Lenovo ThinkPad T14' },
+    { id: 4, value: 'Dell OptiPlex 7090' },
+    { id: 5, value: 'HP ProDesk 400' },
+    { id: 6, value: 'MacBook Pro 14-inch' },
+    { id: 7, value: 'Dell Inspiron 3501' },
+    { id: 8, value: 'HP Pavilion 15' }
+  ],
+  cadre: [
+    { id: 1, value: 'Officer' },
+    { id: 2, value: 'Staff' },
+    { id: 3, value: 'Manager' },
+    { id: 4, value: 'Director' },
+    { id: 5, value: 'Executive' },
+    { id: 6, value: 'Supervisor' },
+    { id: 7, value: 'Coordinator' },
+    { id: 8, value: 'Specialist' }
+  ],
+  department: [
+    { id: 1, value: 'Information Technology' },
+    { id: 2, value: 'Human Resources' },
+    { id: 3, value: 'Finance & Accounting' },
+    { id: 4, value: 'Operations' },
+    { id: 5, value: 'Marketing & Sales' },
+    { id: 6, value: 'Research & Development' },
+    { id: 7, value: 'Quality Assurance' },
+    { id: 8, value: 'Customer Service' }
+  ],
+  section: [
+    { id: 1, value: 'Software Development' },
+    { id: 2, value: 'Technical Support' },
+    { id: 3, value: 'Network Infrastructure' },
+    { id: 4, value: 'Information Security' },
+    { id: 5, value: 'Quality Assurance' },
+    { id: 6, value: 'Database Administration' },
+    { id: 7, value: 'System Administration' },
+    { id: 8, value: 'Help Desk' }
+  ],
+  building: [
+    { id: 1, value: 'Main Building' },
+    { id: 2, value: 'North Wing' },
+    { id: 3, value: 'South Wing' },
+    { id: 4, value: 'East Wing' },
+    { id: 5, value: 'West Wing' },
+    { id: 6, value: 'Annex Building' },
+    { id: 7, value: 'Remote Office A' },
+    { id: 8, value: 'Remote Office B' }
+  ],
+  vendor: [
+    { id: 1, value: 'Dell Technologies' },
+    { id: 2, value: 'HP Inc.' },
+    { id: 3, value: 'Lenovo Group' },
+    { id: 4, value: 'Microsoft Corporation' },
+    { id: 5, value: 'Cisco Systems' },
+    { id: 6, value: 'Apple Inc.' },
+    { id: 7, value: 'ASUS Computer' },
+    { id: 8, value: 'Acer Group' }
+  ],
+  operational_status: [
+    { id: 1, value: 'Active' },
+    { id: 2, value: 'Inactive' },
+    { id: 3, value: 'Under Maintenance' },
+    { id: 4, value: 'Retired' },
+    { id: 5, value: 'In Storage' },
+    { id: 6, value: 'Under Repair' },
+    { id: 7, value: 'Awaiting Assignment' }
+  ],
+  disposition_status: [
+    { id: 1, value: 'In Use' },
+    { id: 2, value: 'Available' },
+    { id: 3, value: 'Under Repair' },
+    { id: 4, value: 'Disposed' },
+    { id: 5, value: 'Lost/Stolen' },
+    { id: 6, value: 'Transferred' },
+    { id: 7, value: 'Surplus' }
+  ]
+};
 
 function AddAsset() {
   const [isCommon, setIsCommon] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  const { createAsset, isPending, isError: mutationError, error: mutationErrorData } = useCreateAsset();
-  const { combinedOptions: categories, isLoading, isError } = useAllCategories([
-    'department',
-    'section',
-    'hardware_type',
-    'building',
-    'vendor',
-    'model',
-    'cadre',
-    'operational_status',
-    'disposition_status',
-  ]);
+  // Simulated loading state
+  const [isLoading] = useState(false);
+  const [isError] = useState(false);
 
   // Create dynamic validation schema based on isCommon state
   const createValidationSchema = (isCommon) =>
@@ -150,56 +233,63 @@ function AddAsset() {
     }
   }, [watchedDcDate, watchedReplacementPeriod, setValue]);
 
-const onSubmit = async (data) => {
-  console.log('Form data:', data);
-  try {
-    // Map form data to API payload - STORE VALUES, NOT IDs
-    const payload = {
-      asset_id: data.asset_id || null,
-      serial_number: data.serial_number,
+  // Simulate API call with dummy response
+  const onSubmit = async (data) => {
+    console.log('Form data:', data);
+    setIsSubmitting(true);
+    setSubmitError(null);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Store the actual value/name, not the ID
-      hardware_type: data.hardware_type || null,
+      // Simulate random success/error (80% success rate)
+      const isSuccess = Math.random() > 0.2;
       
-      model_number: data.model || null,
-      employee_id: data.owner_fullname || null,
-      owner_fullname: data.owner_fullname || null,
-      hostname: data.hostname || null,
-      p_number: data.p_number || null,
-      
-      // Store the actual value/name, not the ID
-      cadre: data.cadre || null,
-      department: data.department || null,
-      section: data.section || null,
-      building: data.building || null,
-      vendor: data.vendor || null,
-      
-      po_number: data.po_number || null,
-      po_date: data.po_date ? new Date(data.po_date).toISOString().split('T')[0] : null,
-      dc_number: data.dc_number || null,
-      dc_date: data.dc_date ? new Date(data.dc_date).toISOString().split('T')[0] : null,
-      assigned_date: data.assigned_date ? new Date(data.assigned_date).toISOString().split('T')[0] : null,
-      replacement_due_period: data.replacement_due_period || null,
-      replacement_due_date: data.replacement_due_date
-        ? new Date(data.replacement_due_date).toISOString().split('T')[0]
-        : null,
-      
-      // Store the actual value/name, not the ID
-      operational_status: data.operational_status || null,
-      disposition_status: data.disposition_status || null,
-    };
+      if (isSuccess) {
+        // Map form data to API payload - STORE VALUES, NOT IDs
+        const payload = {
+          asset_id: data.asset_id || null,
+          serial_number: data.serial_number,
+          hardware_type: data.hardware_type || null,
+          model_number: data.model || null,
+          employee_id: data.owner_fullname || null,
+          owner_fullname: data.owner_fullname || null,
+          hostname: data.hostname || null,
+          p_number: data.p_number || null,
+          cadre: data.cadre || null,
+          department: data.department || null,
+          section: data.section || null,
+          building: data.building || null,
+          vendor: data.vendor || null,
+          po_number: data.po_number || null,
+          po_date: data.po_date ? new Date(data.po_date).toISOString().split('T')[0] : null,
+          dc_number: data.dc_number || null,
+          dc_date: data.dc_date ? new Date(data.dc_date).toISOString().split('T')[0] : null,
+          assigned_date: data.assigned_date ? new Date(data.assigned_date).toISOString().split('T')[0] : null,
+          replacement_due_period: data.replacement_due_period || null,
+          replacement_due_date: data.replacement_due_date
+            ? new Date(data.replacement_due_date).toISOString().split('T')[0]
+            : null,
+          operational_status: data.operational_status || null,
+          disposition_status: data.disposition_status || null,
+        };
 
-    console.log('Submitting asset data (storing values, not IDs):', payload);
-
-    await createAsset(payload);
-    setSuccess('Asset created successfully!');
-    reset();
-    setIsCommon(false);
-  } catch (err) {
-    setSuccess(null);
-    console.error('Error creating asset:', err);
-  }
-};
+        console.log('Simulated API success with payload:', payload);
+        setSuccess('Asset created successfully!');
+        reset();
+        setIsCommon(false);
+      } else {
+        throw new Error('Simulated API error - please try again');
+      }
+    } catch (err) {
+      setSuccess(null);
+      setSubmitError(err.message || 'Failed to create asset');
+      console.error('Simulated error creating asset:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -229,11 +319,11 @@ const onSubmit = async (data) => {
       <Navigation />
 
       <main className="max-w-4xl mx-auto px-4 py-6">
-        {mutationError && (
+        {submitError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             <div className="flex items-center">
               <i className="fas fa-exclamation-circle mr-2"></i>
-              {mutationErrorData?.message || 'Failed to create asset'}
+              {submitError}
             </div>
           </div>
         )}
@@ -273,6 +363,7 @@ const onSubmit = async (data) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Asset ID */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Asset ID
@@ -294,6 +385,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Serial Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Serial # <span className="text-red-500">*</span>
@@ -317,6 +409,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Hardware Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Hardware Type <span className="text-red-500">*</span>
@@ -332,7 +425,7 @@ const onSubmit = async (data) => {
                       }`}
                     >
                       <option value="">Select Hardware Type</option>
-                      {categories.hardware_type?.map((type) => (
+                      {dummyCategories.hardware_type?.map((type) => (
                         <option key={type.id} value={type.value}>
                           {type.value}
                         </option>
@@ -345,6 +438,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Model Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Model Number
@@ -358,7 +452,7 @@ const onSubmit = async (data) => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Model</option>
-                      {categories.model?.map((model) => (
+                      {dummyCategories.model?.map((model) => (
                         <option key={model.id} value={model.value}>
                           {model.value}
                         </option>
@@ -371,6 +465,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Owner Fullname */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Owner Fullname {isCommon ? '' : <span className="text-red-500">*</span>}
@@ -395,6 +490,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Hostname */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Hostname {isCommon ? '' : <span className="text-red-500">*</span>}
@@ -419,6 +515,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* P Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   P Number {isCommon ? '' : <span className="text-red-500">*</span>}
@@ -443,6 +540,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Cadre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cadre <span className="text-red-500">*</span>
@@ -458,7 +556,7 @@ const onSubmit = async (data) => {
                       }`}
                     >
                       <option value="">Select Cadre</option>
-                      {categories.cadre?.map((cadre) => (
+                      {dummyCategories.cadre?.map((cadre) => (
                         <option key={cadre.id} value={cadre.value}>
                           {cadre.value}
                         </option>
@@ -471,6 +569,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Department */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Department <span className="text-red-500">*</span>
@@ -486,7 +585,7 @@ const onSubmit = async (data) => {
                       }`}
                     >
                       <option value="">Select Department</option>
-                      {categories.department?.map((dept) => (
+                      {dummyCategories.department?.map((dept) => (
                         <option key={dept.id} value={dept.value}>
                           {dept.value}
                         </option>
@@ -499,6 +598,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Section */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Section
@@ -512,7 +612,7 @@ const onSubmit = async (data) => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Section</option>
-                      {categories.section?.map((sec) => (
+                      {dummyCategories.section?.map((sec) => (
                         <option key={sec.id} value={sec.value}>
                           {sec.value}
                         </option>
@@ -525,6 +625,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Building */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Building
@@ -538,7 +639,7 @@ const onSubmit = async (data) => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Building</option>
-                      {categories.building?.map((building) => (
+                      {dummyCategories.building?.map((building) => (
                         <option key={building.id} value={building.value}>
                           {building.value}
                         </option>
@@ -551,6 +652,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Vendor */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Vendor
@@ -564,7 +666,7 @@ const onSubmit = async (data) => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Vendor</option>
-                      {categories.vendor?.map((vendor) => (
+                      {dummyCategories.vendor?.map((vendor) => (
                         <option key={vendor.id} value={vendor.value}>
                           {vendor.value}
                         </option>
@@ -577,6 +679,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* PO Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   PO Number
@@ -598,6 +701,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* PO Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   PO Date
@@ -620,6 +724,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* DC Number */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   DC Number
@@ -641,6 +746,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* DC Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   DC Date
@@ -663,6 +769,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Assigned Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Assigned Date
@@ -685,6 +792,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Replacement Due Period */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Replacement Due Period
@@ -709,6 +817,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Replacement Due Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Replacement Due Date
@@ -740,6 +849,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Operational Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Operational Status <span className="text-red-500">*</span>
@@ -755,7 +865,7 @@ const onSubmit = async (data) => {
                       }`}
                     >
                       <option value="">Select Operational Status</option>
-                      {categories.operational_status?.map((status) => (
+                      {dummyCategories.operational_status?.map((status) => (
                         <option key={status.id} value={status.value}>
                           {status.value}
                         </option>
@@ -768,6 +878,7 @@ const onSubmit = async (data) => {
                 )}
               </div>
 
+              {/* Disposition Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Disposition Status <span className="text-red-500">*</span>
@@ -783,7 +894,7 @@ const onSubmit = async (data) => {
                       }`}
                     >
                       <option value="">Select Disposition Status</option>
-                      {categories.disposition_status?.map((status) => (
+                      {dummyCategories.disposition_status?.map((status) => (
                         <option key={status.id} value={status.value}>
                           {status.value}
                         </option>
@@ -797,6 +908,7 @@ const onSubmit = async (data) => {
               </div>
             </div>
 
+            {/* Form Actions */}
             <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
               <button
                 type="button"
@@ -804,17 +916,18 @@ const onSubmit = async (data) => {
                   reset();
                   setIsCommon(false);
                   setSuccess(null);
+                  setSubmitError(null);
                 }}
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
+                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 transition-colors"
               >
                 <i className="fas fa-undo mr-2"></i>Reset
               </button>
               <button
                 type="submit"
-                disabled={isPending}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isPending ? (
+                {isSubmitting ? (
                   <>
                     <i className="fas fa-spinner fa-spin mr-2"></i>Creating...
                   </>

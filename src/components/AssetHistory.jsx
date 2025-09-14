@@ -3,42 +3,133 @@ import Header from './common/Header';
 import Navigation from './common/Navigation';
 import Footer from './common/Footer';
 import LoadingSpinner from './common/LoadingSpinner';
-import { useGetAllAssetTransfers } from '../../api/client/assettransfer';
+
+// Dummy data for demonstration
+const DUMMY_TRANSFERS = [
+  {
+    id: 1,
+    transfer_date: "2024-09-10T14:30:00Z",
+    asset_serial_number: "LAP001234",
+    hardware_type: "Laptop",
+    previous_owner_fullname: "John Smith",
+    previous_p_number: "P001234",
+    previous_department: "IT Support",
+    previous_section: "Hardware",
+    new_owner_fullname: "Sarah Johnson",
+    new_p_number: "P005678",
+    new_department: "Marketing",
+    new_section: "Digital",
+    transfer_reason: "Department transfer",
+    transferred_by_user_email: "admin@company.com",
+    transferred_by_user_name: "Admin User",
+    transferred_by_user_role: "System Admin"
+  },
+  {
+    id: 2,
+    transfer_date: "2024-09-08T09:15:00Z",
+    asset_serial_number: "DES005678",
+    hardware_type: "Desktop",
+    previous_owner_fullname: "Mike Wilson",
+    previous_p_number: "P002345",
+    previous_department: "Finance",
+    previous_section: "Accounting",
+    new_owner_fullname: "Emily Davis",
+    new_p_number: "P006789",
+    new_department: "HR",
+    new_section: "Recruitment",
+    transfer_reason: "Employee resignation",
+    transferred_by_user_email: "hr.manager@company.com",
+    transferred_by_user_name: "HR Manager",
+    transferred_by_user_role: "HR Manager"
+  },
+  {
+    id: 3,
+    transfer_date: "2024-09-05T16:45:00Z",
+    asset_serial_number: "MON009876",
+    hardware_type: "Monitor",
+    previous_owner_fullname: "Lisa Brown",
+    previous_p_number: "P003456",
+    previous_department: "Sales",
+    previous_section: "Regional",
+    new_owner_fullname: "David Chen",
+    new_p_number: "P007890",
+    new_department: "Engineering",
+    new_section: "Software",
+    transfer_reason: "Equipment upgrade",
+    transferred_by_user_email: "it.admin@company.com",
+    transferred_by_user_name: "IT Administrator",
+    transferred_by_user_role: "IT Admin"
+  }
+];
 
 function AssetHistory() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageLimit] = useState(20); // 20 records per page
+  const [pageLimit] = useState(20);
   const [sortConfig, setSortConfig] = useState({
     key: "transfer_date",
     direction: "desc",
   });
 
-  // Search state - removed debounced search
   const [searchInput, setSearchInput] = useState("");
-  const [searchTerm, setSearchTerm] = useState(""); // This will only be updated on manual search
-
-  // Jump to page state
+  const [searchTerm, setSearchTerm] = useState("");
   const [jumpToPageInput, setJumpToPageInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-  // Use the optimized API hook with backend sorting
-  const {
-    data: transfers,
-    total,
-    totalPages,
-    isLoading,
-    isFetching,
-    isError,
-    error,
-    refetch
-  } = useGetAllAssetTransfers({
-    page: currentPage,
-    limit: pageLimit,
-    search: searchTerm,
-    sortKey: sortConfig.key,
-    sortDirection: sortConfig.direction
-  });
+  // Filter and sort dummy data based on search and sort config
+  const { transfers, total, totalPages } = useMemo(() => {
+    let filteredData = [...DUMMY_TRANSFERS];
 
-  // Removed the debounced search effect - search only happens manually now
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filteredData = filteredData.filter(record =>
+        record.asset_serial_number?.toLowerCase().includes(searchLower) ||
+        record.previous_owner_fullname?.toLowerCase().includes(searchLower) ||
+        record.new_owner_fullname?.toLowerCase().includes(searchLower) ||
+        record.previous_department?.toLowerCase().includes(searchLower) ||
+        record.new_department?.toLowerCase().includes(searchLower) ||
+        record.transferred_by_user_email?.toLowerCase().includes(searchLower) ||
+        record.transfer_reason?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply sorting
+    filteredData.sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Handle date sorting
+      if (sortConfig.key === "transfer_date") {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+
+      // Handle null/undefined values
+      if (aValue == null) aValue = "";
+      if (bValue == null) bValue = "";
+
+      if (sortConfig.direction === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    const totalRecords = filteredData.length;
+    const totalPagesCount = Math.ceil(totalRecords / pageLimit);
+
+    // Apply pagination
+    const startIndex = (currentPage - 1) * pageLimit;
+    const endIndex = startIndex + pageLimit;
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+
+    return {
+      transfers: paginatedData,
+      total: totalRecords,
+      totalPages: totalPagesCount
+    };
+  }, [searchTerm, sortConfig, currentPage, pageLimit]);
 
   // Sort handler
   const handleSort = useCallback((key) => {
@@ -51,10 +142,15 @@ function AssetHistory() {
     }));
   }, []);
 
-  // Search handlers - only trigger search manually
+  // Search handlers
   const handleSearch = useCallback(() => {
-    setSearchTerm(searchInput.trim()); // Use trimmed input
-    setCurrentPage(1); // Reset to first page when searching
+    setIsFetching(true);
+    // Simulate API delay
+    setTimeout(() => {
+      setSearchTerm(searchInput.trim());
+      setCurrentPage(1);
+      setIsFetching(false);
+    }, 500);
   }, [searchInput]);
 
   const clearSearch = useCallback(() => {
@@ -63,7 +159,6 @@ function AssetHistory() {
     setCurrentPage(1);
   }, []);
 
-  // Handle Enter key press in search input
   const handleSearchKeyPress = useCallback((e) => {
     if (e.key === "Enter") {
       handleSearch();
@@ -89,7 +184,6 @@ function AssetHistory() {
     setCurrentPage(newPage);
   }, []);
 
-  // Jump to page handler
   const handleJumpToPage = useCallback(() => {
     const pageNum = parseInt(jumpToPageInput, 10);
     if (pageNum >= 1 && pageNum <= totalPages) {
@@ -98,10 +192,10 @@ function AssetHistory() {
     }
   }, [jumpToPageInput, totalPages]);
 
-  // Generate page numbers for pagination (increased from 5 to 7 visible pages)
+  // Generate page numbers for pagination
   const getPageNumbers = useMemo(() => {
     const pages = [];
-    const maxVisiblePages = 7; // Changed from 5 to 7
+    const maxVisiblePages = 7;
     
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -134,25 +228,7 @@ function AssetHistory() {
       />
       <Navigation />
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {isError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <i className="fas fa-exclamation-circle mr-2"></i>
-                {error?.response?.data?.error || "Failed to load asset ownership history"}
-              </div>
-              <button
-                onClick={() => refetch()}
-                className="text-red-700 hover:text-red-900 underline"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6">
@@ -206,7 +282,7 @@ function AssetHistory() {
                   placeholder="Search by serial number, owner names, departments, or user email..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyPress={handleSearchKeyPress} // Updated to use new handler
+                  onKeyPress={handleSearchKeyPress}
                   className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
@@ -225,7 +301,7 @@ function AssetHistory() {
               >
                 <i className="fas fa-search mr-2"></i>Search
               </button>
-              {searchTerm && ( // Only show clear button if there's an active search
+              {searchTerm && (
                 <button
                   onClick={clearSearch}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 focus:ring-2 focus:ring-gray-500"
@@ -237,7 +313,7 @@ function AssetHistory() {
           </div>
           {searchTerm && (
             <div className="mt-3 text-sm text-gray-600">
-              Showing {transfers.length} of {total} transfer records matching "{searchTerm}" (Page {currentPage} of {totalPages})
+              Showing {transfers.length} of {total} transfer records matching "{searchTerm}" (Page {currentPage} of {Math.max(1, totalPages)})
             </div>
           )}
         </div>
@@ -249,13 +325,11 @@ function AssetHistory() {
             <p className="text-sm text-gray-600">Complete audit trail of asset ownership changes</p>
           </div>
 
-          {/* Table Container with Fixed Headers and Scrolling - Adjusted Height */}
           <div className="overflow-auto max-h-[600px] border border-gray-200">
             <div className="min-w-[1900px]">
               <table className="w-full divide-y divide-gray-200 text-xs">
                 <thead className="bg-gray-700 sticky top-0 z-20 select-none">
                   <tr>
-                    {/* Transfer Date */}
                     <th
                       className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-gray-600"
                       style={{ width: '140px' }}
@@ -269,7 +343,6 @@ function AssetHistory() {
                       </div>
                     </th>
 
-                    {/* Serial Number */}
                     <th
                       className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-gray-600"
                       style={{ width: '120px' }}
@@ -283,7 +356,6 @@ function AssetHistory() {
                       </div>
                     </th>
 
-                    {/* Hardware Type */}
                     <th
                       className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-gray-600"
                       style={{ width: '100px' }}
@@ -297,7 +369,6 @@ function AssetHistory() {
                       </div>
                     </th>
 
-                    {/* Previous Owner */}
                     <th className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider" style={{ width: '400px' }}>
                       <div className="text-center border-b border-gray-500 pb-1 mb-2">Previous Owner</div>
                       <div className="grid grid-cols-4 gap-1 text-xs">
@@ -324,7 +395,6 @@ function AssetHistory() {
                       </div>
                     </th>
 
-                    {/* New Owner */}
                     <th className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider" style={{ width: '400px' }}>
                       <div className="text-center border-b border-gray-500 pb-1 mb-2">New Owner</div>
                       <div className="grid grid-cols-4 gap-1 text-xs">
@@ -351,7 +421,6 @@ function AssetHistory() {
                       </div>
                     </th>
 
-                    {/* Transfer Reason */}
                     <th
                       className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-gray-600"
                       style={{ width: '180px' }}
@@ -365,7 +434,6 @@ function AssetHistory() {
                       </div>
                     </th>
 
-                    {/* Transferred By */}
                     <th
                       className="px-2 py-2 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-gray-600"
                       style={{ width: '180px' }}
@@ -383,28 +451,24 @@ function AssetHistory() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transfers.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
-                      {/* Transfer Date */}
                       <td className="px-2 py-2 whitespace-nowrap" style={{ width: '140px' }}>
                         <div className="text-xs font-medium text-gray-900">
                           {formatDate(record.transfer_date)}
                         </div>
                       </td>
 
-                      {/* Serial Number */}
                       <td className="px-2 py-2 whitespace-nowrap" style={{ width: '120px' }}>
                         <div className="text-xs font-medium text-blue-600">
                           {record.asset_serial_number || "N/A"}
                         </div>
                       </td>
 
-                      {/* Hardware Type */}
                       <td className="px-2 py-2 whitespace-nowrap" style={{ width: '100px' }}>
                         <div className="text-xs text-gray-900">
                           {record.hardware_type || "N/A"}
                         </div>
                       </td>
 
-                      {/* Previous Owner */}
                       <td className="px-2 py-2" style={{ width: '400px' }}>
                         <div className="grid grid-cols-4 gap-1 text-xs">
                           <div className="font-medium text-gray-900 truncate" title={record.previous_owner_fullname || "N/A"}>
@@ -422,7 +486,6 @@ function AssetHistory() {
                         </div>
                       </td>
 
-                      {/* New Owner */}
                       <td className="px-2 py-2" style={{ width: '400px' }}>
                         <div className="grid grid-cols-4 gap-1 text-xs">
                           <div className="font-medium text-gray-900 truncate" title={record.new_owner_fullname || "N/A"}>
@@ -440,14 +503,12 @@ function AssetHistory() {
                         </div>
                       </td>
 
-                      {/* Transfer Reason */}
                       <td className="px-2 py-2" style={{ width: '180px' }}>
                         <div className="text-xs text-gray-900 truncate" title={record.transfer_reason || "No reason provided"}>
                           {record.transfer_reason || "No reason provided"}
                         </div>
                       </td>
 
-                      {/* Transferred By - Now shows proper user email */}
                       <td className="px-2 py-2 whitespace-nowrap" style={{ width: '180px' }}>
                         <div className="text-xs">
                           <div className="font-medium text-blue-600" title={record.transferred_by_user_email}>
@@ -500,7 +561,6 @@ function AssetHistory() {
                       {' '}results
                     </p>
                     
-                    {/* Jump to Page */}
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-700">Go to:</span>
                       <input
@@ -525,7 +585,6 @@ function AssetHistory() {
                   
                   <div>
                     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                      {/* First Page */}
                       {currentPage > 4 && (
                         <>
                           <button
@@ -543,7 +602,6 @@ function AssetHistory() {
                         </>
                       )}
                       
-                      {/* Previous Page */}
                       <button
                         onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1 || isFetching}
@@ -552,7 +610,6 @@ function AssetHistory() {
                         <i className="fas fa-chevron-left"></i>
                       </button>
                       
-                      {/* Page Numbers */}
                       {getPageNumbers.map((pageNum) => (
                         <button
                           key={pageNum}
@@ -568,7 +625,6 @@ function AssetHistory() {
                         </button>
                       ))}
 
-                      {/* Next Page */}
                       <button
                         onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                         disabled={currentPage === totalPages || isFetching}
@@ -577,7 +633,6 @@ function AssetHistory() {
                         <i className="fas fa-chevron-right"></i>
                       </button>
                       
-                      {/* Last Page */}
                       {currentPage < totalPages - 3 && (
                         <>
                           {currentPage < totalPages - 4 && (
@@ -650,6 +705,9 @@ function AssetHistory() {
                   </li>
                   <li>
                     Use the "Go to" field in pagination to jump directly to any page
+                  </li>
+                  <li>
+                    <strong>Demo Note:</strong> This is a demo version with sample data for demonstration purposes
                   </li>
                 </ul>
               </div>

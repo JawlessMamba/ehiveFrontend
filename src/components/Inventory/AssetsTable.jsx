@@ -1,6 +1,38 @@
 import React, { memo, useCallback, useMemo } from "react";
-import { useDeleteAsset, useGetAssetDropdownOptions } from "../../../api/client/asset";
-import { useGetCurrentUser } from '../../../api/client/user';
+
+// Mock data for demonstration
+const mockUser = {
+  role: "admin"
+};
+
+const mockAssetDropdownOptions = {
+  model_number: [
+    { id: 1, value: "Dell OptiPlex 7090" },
+    { id: 2, value: "HP EliteBook 840" },
+    { id: 3, value: "Lenovo ThinkPad T14" },
+    { id: 4, value: "HP LaserJet Pro" },
+    { id: 5, value: "Cisco Catalyst 2960" }
+  ],
+  vendor: [
+    { id: 1, value: "Dell Technologies" },
+    { id: 2, value: "HP Inc." },
+    { id: 3, value: "Lenovo" },
+    { id: 4, value: "Cisco Systems" },
+    { id: 5, value: "Microsoft" }
+  ],
+  operational_status: [
+    { id: 1, value: "active" },
+    { id: 2, value: "inactive" },
+    { id: 3, value: "maintenance" },
+    { id: 4, value: "surplus" }
+  ],
+  disposition_status: [
+    { id: 1, value: "assigned" },
+    { id: 2, value: "available" },
+    { id: 3, value: "disposed" },
+    { id: 4, value: "transferred" }
+  ]
+};
 
 // ✅ OPTIMIZED: Memoized status colors for consistent rendering
 const STATUS_COLORS = [
@@ -31,6 +63,18 @@ const getStatusColor = (() => {
     return statusColorMap.get(normalizedStatus);
   };
 })();
+
+// Mock delete function
+const mockDeleteAsset = {
+  mutate: (assetId) => {
+    console.log(`Mock: Deleting asset with ID: ${assetId}`);
+    // Simulate API call delay
+    setTimeout(() => {
+      alert(`Asset ${assetId} deleted successfully!`);
+    }, 500);
+  },
+  isLoading: false
+};
 
 // ✅ OPTIMIZED: Memoized table row component
 const AssetTableRow = memo(({ 
@@ -341,10 +385,6 @@ const AssetsTable = memo(({
 }) => {
   console.log(`🔄 AssetsTable rendering ${filteredAssets.length} assets`);
 
-  const { deleteAsset, isLoading: deleteLoading } = useDeleteAsset();
-  const { data: user } = useGetCurrentUser();
-  const { data: assetDropdownOptions, isLoading: optionsLoading } = useGetAssetDropdownOptions();
-
   // ✅ OPTIMIZED: Memoized columns configuration
   const columns = useMemo(() => [
     { key: "asset_id", label: "Asset ID", width: "8%" },
@@ -393,6 +433,11 @@ const AssetsTable = memo(({
     }
   }, [formatDateToDDMMYYYY]);
 
+  // Mock delete function
+  const handleDelete = useCallback((assetId) => {
+    mockDeleteAsset.mutate(assetId);
+  }, []);
+
   // ✅ OPTIMIZED: Memoized table header
   const renderTableHeader = useMemo(() => (
     <thead className="bg-gray-700 sticky top-0 z-10">
@@ -426,16 +471,8 @@ const AssetsTable = memo(({
     </thead>
   ), [columns, sortConfig, handleSortClick]);
 
-  // ✅ Loading states
-  if (deleteLoading || optionsLoading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
-        <i className="fas fa-spinner fa-spin text-blue-400 text-4xl mb-4"></i>
-        <p className="text-gray-500 text-lg">Processing...</p>
-      </div>
-    );
-  }
-
+  // ✅ Loading states (removed since no APIs)
+  
   // ✅ Early return for invalid data
   if (!Array.isArray(filteredAssets)) {
     return (
@@ -480,12 +517,12 @@ const AssetsTable = memo(({
                   onCancel={cancelEditing}
                   onTransfer={startTransfer}
                   onSurplus={markAsSurplus}
-                  onDelete={deleteAsset}
+                  onDelete={handleDelete}
                   onInputChange={handleInputChange}
                   formatDate={safeFormatDate}
                   categories={categories}
-                  assetDropdownOptions={assetDropdownOptions}
-                  userRole={user?.role || userRole}
+                  assetDropdownOptions={mockAssetDropdownOptions}
+                  userRole={mockUser?.role || userRole}
                 />
               );
             })}

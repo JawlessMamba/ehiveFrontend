@@ -1,5 +1,4 @@
 import { useForm } from "react-hook-form";
-import { useSignIn } from "../../../api/client/user";
 import { useNavigate } from "react-router-dom";
 import { 
   Eye, EyeOff, Lock, Mail, Zap, Shield, Star, Sparkles, Trophy, Rocket, Heart, Award, 
@@ -8,13 +7,13 @@ import {
   Flower, Leaf, Bird, Trees, Feather
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-toastify";
 
 export default function SignIn() {
   const { register, handleSubmit, reset } = useForm();
-  const mutation = useSignIn();
   const navigate = useNavigate();
-
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Enhanced floating elements with nature and hardware icons
   const floatingElements = [
@@ -63,13 +62,39 @@ export default function SignIn() {
     { Icon: Star, delay: 26, duration: 21, size: 22, color: "text-yellow-500" }
   ];
 
+  // Demo Authentication - Always login as admin
   const onSubmit = (data) => {
-    mutation.mutate(data, {
-      onSuccess: (res) => {
+    setIsLoading(true);
+    
+    // Simple validation for demo
+    if (data.email === "hello" && data.password === "admin") {
+      // Simulate loading
+      setTimeout(() => {
+        // Set demo admin user in localStorage
+        localStorage.setItem("token", "demo-admin-token");
+        localStorage.setItem("userRole", "admin");
+        localStorage.setItem("userName", "Demo Admin");
+        localStorage.setItem("userEmail", "admin@ehive.com");
+        
+        toast.success("Welcome to eHIVE Admin Dashboard! 🎉", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        
+        // Navigate to dashboard (acts as admin dashboard)
         navigate("/");
         reset();
-      },
-    });
+        setIsLoading(false);
+      }, 1500);
+    } else {
+      setTimeout(() => {
+        toast.error("Invalid credentials! Use 'hello' and 'admin' for demo.", {
+          position: "top-right",
+          autoClose: 4000,
+        });
+        setIsLoading(false);
+      }, 1000);
+    }
   };
 
   return (
@@ -182,10 +207,10 @@ export default function SignIn() {
                 {/* Form Header */}
                 <div className="text-center space-y-2 mb-8">
                   <h2 className="text-2xl font-bold text-slate-800">
-                    Sign In
+                     Sign In
                   </h2>
                   <p className="text-slate-600 text-sm">
-                    Sign in to access the Hive 🚀
+                    Sign in to access the Admin Dashboard 
                   </p>
                 </div>
 
@@ -197,8 +222,8 @@ export default function SignIn() {
                     <div className="relative">
                       <Mail className="absolute left-4 top-4 text-blue-500 group-focus-within:text-blue-600 transition-colors z-10" size={20} />
                       <input
-                        type="email"
-                        placeholder="you@engro.com"
+                        type="text"
+                        placeholder="Enter: hello"
                         {...register("email", { required: true })}
                         className="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition-all duration-300 bg-white/90 text-base placeholder-slate-400"
                         required
@@ -213,7 +238,7 @@ export default function SignIn() {
                       <Lock className="absolute left-4 top-4 text-blue-500 group-focus-within:text-blue-600 transition-colors z-10" size={20} />
                       <input
                         type={showPassword ? "text" : "password"}
-                        placeholder="Your Hive Key"
+                        placeholder="Enter: admin"
                         {...register("password", { required: true })}
                         className="w-full pl-12 pr-12 py-3.5 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none transition-all duration-300 bg-white/90 text-base placeholder-slate-400"
                         required
@@ -233,17 +258,17 @@ export default function SignIn() {
                     <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/40 to-indigo-600/40 rounded-2xl blur-sm opacity-50 group-hover:opacity-75 transition duration-500"></div>
                     <button
                       type="submit"
-                      disabled={mutation.isPending}
+                      disabled={isLoading}
                       className="relative w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3.5 rounded-2xl text-base font-medium transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-70"
                     >
-                      {mutation.isPending ? (
+                      {isLoading ? (
                         <div className="flex items-center justify-center space-x-3">
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          <span>Entering the HIVE...</span>
+                          <span>Entering Admin Panel...</span>
                         </div>
                       ) : (
                         <span className="flex items-center justify-center space-x-2">
-                          <span>Enter the HIVE</span>
+                          <span>Enter Admin Panel</span>
                           <Zap size={18} />
                         </span>
                       )}
@@ -251,11 +276,19 @@ export default function SignIn() {
                   </div>
                 </form>
 
-                {/* Security Badge */}
-                <div className="mt-6 text-center">
-                  <div className="inline-flex items-center space-x-2 text-xs text-slate-500 bg-slate-50/80 px-3 py-1.5 rounded-full border border-slate-200/50">
-                    <Shield size={14} className="text-blue-500" />
-                    <span>Protected by enterprise security</span>
+                {/* Demo Credentials Info */}
+                <div className="mt-6 space-y-2">
+                  <div className="text-center">
+                    <div className="inline-flex items-center space-x-2 text-xs text-slate-500 bg-slate-50/80 px-3 py-1.5 rounded-full border border-slate-200/50">
+                      <Shield size={14} className="text-blue-500" />
+                      <span>Demo Mode - Admin Access Only</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50/80 border border-blue-200/50 rounded-2xl p-3">
+                    <p className="text-xs text-blue-700 text-center font-medium">
+                      Demo Credentials: <span className="font-mono bg-blue-100 px-2 py-0.5 rounded">hello</span> / <span className="font-mono bg-blue-100 px-2 py-0.5 rounded">admin</span>
+                    </p>
                   </div>
                 </div>
 

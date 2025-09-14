@@ -1,8 +1,75 @@
 import React, { useState } from 'react';
-import { useCreateAssetTransfer } from '../../../api/client/assettransfer';
 
-function TransferModal({ transferringAsset, categories, cancelTransfer, setError, onTransferSuccess }) {
-  const { createTransfer, isLoading } = useCreateAssetTransfer();
+// Mock categories data
+const mockCategories = {
+  cadre: [
+    { id: 1, value: "Officer" },
+    { id: 2, value: "Manager" },
+    { id: 3, value: "Executive" },
+    { id: 4, value: "Analyst" },
+    { id: 5, value: "Specialist" },
+    { id: 6, value: "Coordinator" },
+    { id: 7, value: "Supervisor" },
+    { id: 8, value: "Director" }
+  ],
+  department: [
+    { id: 1, value: "Information Technology" },
+    { id: 2, value: "Human Resources" },
+    { id: 3, value: "Finance" },
+    { id: 4, value: "Operations" },
+    { id: 5, value: "Marketing" },
+    { id: 6, value: "Administration" },
+    { id: 7, value: "Engineering" },
+    { id: 8, value: "Quality Assurance" }
+  ],
+  section: [
+    { id: 1, value: "Development" },
+    { id: 2, value: "Testing" },
+    { id: 3, value: "Support" },
+    { id: 4, value: "Security" },
+    { id: 5, value: "Network" },
+    { id: 6, value: "Database" },
+    { id: 7, value: "Infrastructure" },
+    { id: 8, value: "Research" }
+  ],
+  building: [
+    { id: 1, value: "Main Building" },
+    { id: 2, value: "Annex A" },
+    { id: 3, value: "Annex B" },
+    { id: 4, value: "Data Center" },
+    { id: 5, value: "Warehouse" },
+    { id: 6, value: "Branch Office" },
+    { id: 7, value: "Training Center" },
+    { id: 8, value: "Guest House" }
+  ]
+};
+
+// Mock transfer function
+const mockCreateTransfer = (transferPayload) => {
+  return new Promise((resolve) => {
+    console.log('Mock: Creating transfer with payload:', transferPayload);
+    // Simulate API delay
+    setTimeout(() => {
+      resolve({
+        success: true,
+        data: {
+          id: Math.random().toString(36).substr(2, 9),
+          ...transferPayload,
+          created_at: new Date().toISOString()
+        }
+      });
+    }, 1000);
+  });
+};
+
+function TransferModal({ 
+  transferringAsset, 
+  categories = mockCategories, 
+  cancelTransfer, 
+  setError, 
+  onTransferSuccess 
+}) {
+  const [isLoading, setIsLoading] = useState(false);
 
   // State for new transfer data
   const [newTransferData, setNewTransferData] = useState({
@@ -38,6 +105,8 @@ function TransferModal({ transferringAsset, categories, cancelTransfer, setError
       return;
     }
 
+    setIsLoading(true);
+
     try {
       // Prepare transfer data matching the backend API
       console.log(newTransferData)
@@ -54,8 +123,8 @@ function TransferModal({ transferringAsset, categories, cancelTransfer, setError
         transferred_by: 'admin' // You might want to get this from user context
       };
 
-      // Call the API
-      const result = await createTransfer(transferPayload);
+      // Call the mock API
+      const result = await mockCreateTransfer(transferPayload);
       
       if (result && result.success !== false) {
         // Notify parent component of successful transfer
@@ -96,6 +165,8 @@ function TransferModal({ transferringAsset, categories, cancelTransfer, setError
     } catch (err) {
       console.error('Transfer error:', err);
       setError(err.message || 'Failed to transfer asset. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -176,10 +247,10 @@ function TransferModal({ transferringAsset, categories, cancelTransfer, setError
 
             {/* Select Fields */}
             {[
-              { label: 'Cadre', field: 'cadre', options: categories.cadre },
-              { label: 'Department', field: 'department', options: categories.department },
-              { label: 'Section', field: 'section', options: categories.section },
-              { label: 'Building', field: 'building', options: categories.building }
+              { label: 'Cadre', field: 'cadre', options: categories.cadre || mockCategories.cadre },
+              { label: 'Department', field: 'department', options: categories.department || mockCategories.department },
+              { label: 'Section', field: 'section', options: categories.section || mockCategories.section },
+              { label: 'Building', field: 'building', options: categories.building || mockCategories.building }
             ].map(({ label, field, options }) => (
               <div key={field} className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">{label} *</label>
@@ -233,4 +304,5 @@ function TransferModal({ transferringAsset, categories, cancelTransfer, setError
     </div>
   );
 }
+
 export default TransferModal;

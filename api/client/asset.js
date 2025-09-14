@@ -1,394 +1,392 @@
-// src/hooks/useAssets.js
+// api/client/asset.js - MOCK VERSION
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "../axios/index";
 import { toast } from "react-toastify";
-import API_ROUTE from "../endpoint/index";
 
-/**
- * Hook for creating a new asset
- */
-export function useCreateAsset() {
-  const queryClient = useQueryClient();
+// Mock asset data
+const MOCK_ASSETS = [
+  {
+    id: 1,
+    name: "MacBook Pro M2",
+    serialNumber: "MBP2023001",
+    assetTag: "LAPTOP-001",
+    category: "Laptop",
+    brand: "Apple",
+    model: "MacBook Pro 14-inch",
+    status: "Active",
+    assignedTo: "Demo User",
+    assignedEmail: "hello",
+    department: "IT",
+    location: "Office - Floor 1",
+    purchaseDate: "2023-01-15",
+    warrantyExpiry: "2026-01-15",
+    cost: 2499.99,
+    supplier: "Apple Store",
+    notes: "Primary development machine",
+    condition: "Excellent",
+    createdAt: new Date("2023-01-15").toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 2,
+    name: "Dell UltraSharp Monitor",
+    serialNumber: "DELL2023002",
+    assetTag: "MONITOR-002",
+    category: "Monitor",
+    brand: "Dell",
+    model: "U2723QE",
+    status: "Available",
+    assignedTo: null,
+    assignedEmail: null,
+    department: "IT",
+    location: "Storage Room A",
+    purchaseDate: "2023-02-20",
+    warrantyExpiry: "2026-02-20",
+    cost: 649.99,
+    supplier: "Dell Direct",
+    notes: "4K Monitor - Ready for assignment",
+    condition: "New",
+    createdAt: new Date("2023-02-20").toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 3,
+    name: "iPhone 14 Pro",
+    serialNumber: "IPH2023003",
+    assetTag: "PHONE-003",
+    category: "Mobile Device",
+    brand: "Apple",
+    model: "iPhone 14 Pro",
+    status: "Active",
+    assignedTo: "John Doe",
+    assignedEmail: "john.doe@company.com",
+    department: "Sales",
+    location: "User Assigned",
+    purchaseDate: "2023-03-10",
+    warrantyExpiry: "2024-03-10",
+    cost: 1099.99,
+    supplier: "Apple Store",
+    notes: "Company phone for sales team",
+    condition: "Good",
+    createdAt: new Date("2023-03-10").toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 4,
+    name: "HP Printer LaserJet",
+    serialNumber: "HP2023004",
+    assetTag: "PRINTER-004",
+    category: "Printer",
+    brand: "HP",
+    model: "LaserJet Pro M404n",
+    status: "Maintenance",
+    assignedTo: null,
+    assignedEmail: null,
+    department: "Office",
+    location: "Office - Floor 2",
+    purchaseDate: "2023-01-05",
+    warrantyExpiry: "2025-01-05",
+    cost: 299.99,
+    supplier: "Office Depot",
+    notes: "Under maintenance - toner replacement needed",
+    condition: "Fair",
+    createdAt: new Date("2023-01-05").toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 5,
+    name: "Surface Pro Tablet",
+    serialNumber: "SURF2023005",
+    assetTag: "TABLET-005",
+    category: "Tablet",
+    brand: "Microsoft",
+    model: "Surface Pro 9",
+    status: "Surplus",
+    assignedTo: null,
+    assignedEmail: null,
+    department: "IT",
+    location: "Surplus Storage",
+    purchaseDate: "2022-11-20",
+    warrantyExpiry: "2024-11-20",
+    cost: 1299.99,
+    supplier: "Microsoft Store",
+    notes: "Marked as surplus - outdated model",
+    condition: "Good",
+    createdAt: new Date("2022-11-20").toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
 
-  const {
-    mutate: createAsset,
-    isSuccess,
-    isLoading,
-    isError,
-    error,
-  } = useMutation({
-    mutationFn: async (formData) => {
-      return await api.post(API_ROUTE.asset.createAsset, formData);
-    },
+// Mock dropdown options
+const MOCK_DROPDOWN_OPTIONS = {
+  categories: ["Laptop", "Monitor", "Mobile Device", "Printer", "Tablet", "Desktop", "Server"],
+  brands: ["Apple", "Dell", "HP", "Microsoft", "Lenovo", "ASUS", "Samsung"],
+  departments: ["IT", "HR", "Sales", "Marketing", "Engineering", "Finance", "Operations"],
+  locations: ["Office - Floor 1", "Office - Floor 2", "Storage Room A", "Storage Room B", "User Assigned", "Remote"],
+  statuses: ["Active", "Available", "Maintenance", "Surplus", "Disposed"],
+  conditions: ["Excellent", "Good", "Fair", "Poor", "New"]
+};
 
-    onSuccess: () => {
-      toast.success("Asset created successfully!");
-      // ✅ OPTIMIZED: Only invalidate current page queries
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-    },
+// Helper function to simulate API delay
+const delay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to create asset!");
-    },
-  });
+// Mock API functions
+const mockAssetApi = {
+  createAsset: async (assetData) => {
+    await delay(800);
+    
+    const newAsset = {
+      id: Date.now(),
+      ...assetData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    MOCK_ASSETS.unshift(newAsset);
+    
+    return {
+      success: true,
+      message: "Asset created successfully",
+      asset: newAsset
+    };
+  },
 
-  return { createAsset, isSuccess, isLoading, isError, error };
-}
-
-/**
- * ✅ OPTIMIZED: Hook for fetching assets with server-side filtering and pagination
- */
-export function useGetAllAssets(filters = {}) {
-  const {
-    page = 1,
-    limit = 50, // ✅ Increased default limit for better performance
-    search = "",
-    department = "",
-    hardware_type = "",
-    cadre = "",
-    building = "",
-    section = "",
-    operational_status = "",
-    disposition_status = "",
-    po_date_from = "",
-    po_date_to = "",
-    assigned_date_from = "",
-    assigned_date_to = "",
-    dc_date_from = "",
-    dc_date_to = "",
-    noLimit = false
-  } = filters;
-
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useQuery({
-    queryKey: [
-      "assets", 
-      page, 
-      limit, 
-      search, 
-      department,
-      hardware_type,
-      cadre,
-      building,
-      section,
-      operational_status,
-      disposition_status,
-      po_date_from,
-      po_date_to,
-      assigned_date_from,
-      assigned_date_to,
-      dc_date_from,
-      dc_date_to,
-      noLimit
-    ],
-    queryFn: async () => {
-      // ✅ Send ALL filters to backend for server-side processing
-      const params = {
-        page,
-        limit,
-        search,
-        department,
-        hardware_type,
-        cadre,
-        building,
-        section,
-        operational_status,
-        disposition_status,
-        po_date_from,
-        po_date_to,
-        assigned_date_from,
-        assigned_date_to,
-        dc_date_from,
-        dc_date_to,
-        noLimit
-      };
-
-      // ✅ Remove empty params to avoid sending unnecessary data
-      const cleanParams = Object.fromEntries(
-        Object.entries(params).filter(([, v]) => v !== "" && v !== null && v !== undefined)
-      );
-
-      console.log('🔍 Fetching assets with filters:', cleanParams);
-
-      const response = await api.get(API_ROUTE.asset.getAllAssets, { params: cleanParams });
-
-      console.log(`✅ Received ${response.data?.data?.length} assets of ${response.data?.total} total`);
-
-      return {
-        data: response.data?.data || [],
-        total: response.data?.total || 0,
-        page: response.data?.page || page,
-        limit: response.data?.limit || limit,
-        fetched: response.data?.fetched || 0,
-      };
-    },
-    keepPreviousData: true, // ✅ Prevents flash of loading state
-    staleTime: 30000, // ✅ Cache for 30 seconds
-    retry: 1,
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to fetch assets!");
-    },
-  });
-
-  return {
-    data: data?.data || [],
-    total: data?.total || 0,
-    page: data?.page || page,
-    limit: data?.limit || limit,
-    fetched: data?.fetched || 0,
-    isLoading,
-    isFetching,
-    isError,
-    error,
-    refetch,
-  };
-}
-
-/**
- * Hook for deleting an asset
- */
-export function useDeleteAsset() {
-  const queryClient = useQueryClient();
-
-  const {
-    mutate: deleteAsset,
-    isLoading,
-    isError,
-    error,
-    isSuccess,
-  } = useMutation({
-    mutationFn: async (id) => {
-      const endpoint = API_ROUTE.asset.deleteAsset.replace(":id", id);
-      return await api.delete(endpoint);
-    },
-
-    onSuccess: () => {
-      toast.success("Asset deleted successfully!");
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-    },
-
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to delete asset!");
-    },
-  });
-
-  return { deleteAsset, isLoading, isError, error, isSuccess };
-}
-
-export function useMarkAssetSurplus() {
-  const queryClient = useQueryClient();
-
-  const {
-    mutate: markSurplus,
-    isLoading,
-    isError,
-    error,
-    isSuccess,
-  } = useMutation({
-    mutationFn: async (id) => {
-      const endpoint = API_ROUTE.asset.markSurplus.replace(":id", id);
-      return await api.put(endpoint);
-    },
-
-    onSuccess: () => {
-      toast.success("Asset marked as surplus successfully!");
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-    },
-
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to mark asset as surplus!");
-    },
-  });
-
-  return { markSurplus, isLoading, isError, error, isSuccess };
-}
-
-export function useUpdateAsset() {
-  const queryClient = useQueryClient();
-
-  const {
-    mutate: updateAsset,
-    isLoading,
-    isError,
-    error,
-    isSuccess,
-  } = useMutation({
-    mutationFn: async ({ id, data }) => {
-      const endpoint = API_ROUTE.asset.updateAsset.replace(":id", id);
-      return await api.put(endpoint, data);
-    },
-
-    onSuccess: () => {
-      toast.success("Asset updated successfully!");
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-    },
-
-    onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to update asset!");
-    },
-  });
-
-  return { updateAsset, isLoading, isError, error, isSuccess };
-}
-
-export function useGetAssetDropdownOptions() {
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["asset-dropdown-options"],
-    queryFn: async () => {
-      console.log("Fetching asset dropdown options...");
-      const response = await api.get(API_ROUTE.asset.getDropdownOptions);
-      console.log("Dropdown options received:", response.data?.data);
-      return response.data?.data || {};
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: 2,
-    onError: (err) => {
-      console.error("Failed to fetch dropdown options:", err);
-      toast.error(err?.response?.data?.message || "Failed to fetch dropdown options!");
-    },
-  });
-
-  return {
-    data: data || {},
-    isLoading,
-    isError,
-    error,
-    refetch,
-  };
-}
-/**
- * ✅ FIXED: Hook for exporting filtered assets
- */
-export function useExportAssets() {
-  const {
-    mutate: exportAssets,
-    data,
-    isLoading,
-    isError,
-    error,
-  } = useMutation({
-    mutationFn: async (filters) => {
-      console.log('🔄 Exporting with filters:', filters);
-      
-      // ✅ Clean filters to remove empty values
-      const cleanFilters = Object.fromEntries(
-        Object.entries(filters || {}).filter(([key, value]) => 
-          value !== "" && value !== null && value !== undefined && 
-          !['page', 'limit', 'noLimit'].includes(key)
-        )
-      );
-      
-      console.log('🔄 Clean filters for export:', cleanFilters);
-      
-      try {
-        const response = await api.get(API_ROUTE.asset.exportAssets, { 
-          params: cleanFilters 
-        });
-        
-        console.log('✅ Export response:', response.data);
-        return response.data?.data || [];
-      } catch (error) {
-        console.error('❌ Export API error:', error);
-        throw error;
+  getAllAssets: async () => {
+    await delay(300);
+    
+    return {
+      success: true,
+      assets: MOCK_ASSETS,
+      total: MOCK_ASSETS.length,
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        limit: 50,
+        total: MOCK_ASSETS.length
       }
-    },
-    onSuccess: (data) => {
-      console.log(`✅ Export successful: ${data.length} assets`);
-    },
-    onError: (err) => {
-      console.error('❌ Export failed:', err);
-      toast.error(err?.response?.data?.message || "Failed to export assets!");
-    },
-  });
+    };
+  },
 
-  return {
-    exportAssets,
-    data,
-    isLoading,
-    isError,
-    error,
-  };
-}
+  updateAsset: async ({ id, ...updateData }) => {
+    await delay(600);
+    
+    const assetIndex = MOCK_ASSETS.findIndex(asset => asset.id === parseInt(id));
+    if (assetIndex === -1) {
+      throw new Error("Asset not found");
+    }
+    
+    MOCK_ASSETS[assetIndex] = {
+      ...MOCK_ASSETS[assetIndex],
+      ...updateData,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return {
+      success: true,
+      message: "Asset updated successfully",
+      asset: MOCK_ASSETS[assetIndex]
+    };
+  },
 
-// Add this new hook for fetching filter options
-export function useGetFilterOptions() {
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["asset-filter-options"],
-    queryFn: async () => {
-      console.log("Fetching asset filter options...");
-      const response = await api.get(API_ROUTE.asset.getFilterOptions);
-      console.log("Filter options received:", response.data?.data);
-      return response.data?.data || {};
-    },
-    staleTime: 2 * 60 * 1000, // Cache for 2 minutes  
-    retry: 2,
-    onError: (err) => {
-      console.error("Failed to fetch filter options:", err);
-      toast.error(err?.response?.data?.message || "Failed to fetch filter options!");
-    },
-  });
+  deleteAsset: async (id) => {
+    await delay(400);
+    
+    const assetIndex = MOCK_ASSETS.findIndex(asset => asset.id === parseInt(id));
+    if (assetIndex === -1) {
+      throw new Error("Asset not found");
+    }
+    
+    const deletedAsset = MOCK_ASSETS.splice(assetIndex, 1)[0];
+    
+    return {
+      success: true,
+      message: "Asset deleted successfully",
+      asset: deletedAsset
+    };
+  },
 
-  return {
-    data: data || {},
-    isLoading,
-    isError,
-    error,
-    refetch,
-  };
-}
+  markSurplus: async (id) => {
+    await delay(500);
+    
+    const assetIndex = MOCK_ASSETS.findIndex(asset => asset.id === parseInt(id));
+    if (assetIndex === -1) {
+      throw new Error("Asset not found");
+    }
+    
+    MOCK_ASSETS[assetIndex] = {
+      ...MOCK_ASSETS[assetIndex],
+      status: "Surplus",
+      assignedTo: null,
+      assignedEmail: null,
+      updatedAt: new Date().toISOString()
+    };
+    
+    return {
+      success: true,
+      message: "Asset marked as surplus",
+      asset: MOCK_ASSETS[assetIndex]
+    };
+  },
 
-/**
- * Hook for manually checking and updating expiring assets
- */
-export function useCheckExpiringAssets() {
+  getDropdownOptions: async () => {
+    await delay(200);
+    
+    return {
+      success: true,
+      data: MOCK_DROPDOWN_OPTIONS
+    };
+  },
+
+  getFilterOptions: async () => {
+    await delay(200);
+    
+    return {
+      success: true,
+      filters: MOCK_DROPDOWN_OPTIONS
+    };
+  },
+
+  checkExpiring: async () => {
+    await delay(300);
+    
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    
+    const expiringAssets = MOCK_ASSETS.filter(asset => {
+      if (!asset.warrantyExpiry) return false;
+      return new Date(asset.warrantyExpiry) <= thirtyDaysFromNow;
+    });
+    
+    return {
+      success: true,
+      expiring: expiringAssets,
+      count: expiringAssets.length
+    };
+  },
+
+  exportAssets: async () => {
+    await delay(1000);
+    
+    // Simulate CSV export
+    const csvData = "data:text/csv;charset=utf-8," + 
+      "ID,Name,Serial Number,Category,Status,Assigned To,Department\n" +
+      MOCK_ASSETS.map(asset => 
+        `${asset.id},${asset.name},${asset.serialNumber},${asset.category},${asset.status},${asset.assignedTo || ''},${asset.department}`
+      ).join('\n');
+    
+    return {
+      success: true,
+      message: "Export completed",
+      downloadUrl: csvData
+    };
+  }
+};
+
+// Export hooks (keeping the same interface)
+export const useCreateAsset = () => {
   const queryClient = useQueryClient();
-
-  const {
-    mutate: checkExpiringAssets,
-    isLoading,
-    isError,
-    error,
-    data,
-  } = useMutation({
-    mutationFn: async () => {
-      const response = await api.post(API_ROUTE.asset.checkExpiring);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      if (data.affectedRows > 0) {
-        toast.success(`Updated ${data.affectedRows} assets to 'expiring soon' status`);
-      }
-      // Invalidate assets to refresh the table
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
+  
+  return useMutation({
+    mutationFn: mockAssetApi.createAsset,
+    onSuccess: () => {
+      toast.success("Asset created successfully");
+      queryClient.invalidateQueries(["assets"]);
     },
     onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to check expiring assets!");
+      toast.error(err.message || "Failed to create asset");
     },
   });
+};
 
-  return { 
-    checkExpiringAssets, 
-    isLoading, 
-    isError, 
-    error,
-    result: data
-  };
-}
+export const useGetAllAssets = () => {
+  return useQuery({
+    queryKey: ["assets"],
+    queryFn: mockAssetApi.getAllAssets,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useUpdateAsset = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: mockAssetApi.updateAsset,
+    onSuccess: () => {
+      toast.success("Asset updated successfully");
+      queryClient.invalidateQueries(["assets"]);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to update asset");
+    },
+  });
+};
+
+export const useDeleteAsset = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: mockAssetApi.deleteAsset,
+    onSuccess: () => {
+      toast.success("Asset deleted successfully");
+      queryClient.invalidateQueries(["assets"]);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to delete asset");
+    },
+  });
+};
+
+export const useMarkSurplus = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: mockAssetApi.markSurplus,
+    onSuccess: () => {
+      toast.success("Asset marked as surplus");
+      queryClient.invalidateQueries(["assets"]);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to mark as surplus");
+    },
+  });
+};
+
+export const useGetDropdownOptions = () => {
+  return useQuery({
+    queryKey: ["dropdownOptions"],
+    queryFn: mockAssetApi.getDropdownOptions,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
+};
+
+export const useGetFilterOptions = () => {
+  return useQuery({
+    queryKey: ["filterOptions"],
+    queryFn: mockAssetApi.getFilterOptions,
+    staleTime: 30 * 60 * 1000,
+  });
+};
+
+export const useCheckExpiring = () => {
+  return useQuery({
+    queryKey: ["expiringAssets"],
+    queryFn: mockAssetApi.checkExpiring,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+export const useExportAssets = () => {
+  return useMutation({
+    mutationFn: mockAssetApi.exportAssets,
+    onSuccess: (data) => {
+      toast.success("Export completed");
+      // Trigger download
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = 'assets-export.csv';
+      link.click();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Export failed");
+    },
+  });
+};

@@ -9,19 +9,102 @@ import { saveAs } from 'file-saver';
 import TransferModal from '../components/Inventory/TransferModal';
 import AssetsTable from '../components/Inventory/AssetsTable';
 import FilterBar from '../components/Inventory/FilterBar';
-import { useGetFilterOptions } from "../../api/client/asset";
 
+// Dummy data for demonstration
+const DUMMY_ASSETS = [
+  {
+    id: 1,
+    asset_id: "AST001234",
+    serial_number: "LAP001234",
+    hardware_type: "Laptop",
+    model_number: "Dell Latitude 7420",
+    owner_fullname: "John Smith",
+    hostname: "LAPTOP-JS001",
+    p_number: "P001234",
+    cadre: "Officer",
+    department: "IT Support",
+    section: "Hardware",
+    building: "Main Building",
+    vendor: "Dell Technologies",
+    po_number: "PO-2024-001",
+    po_date: "2024-01-15T00:00:00Z",
+    dc_number: "DC-2024-001",
+    dc_date: "2024-02-01T00:00:00Z",
+    assigned_date: "2024-02-05T00:00:00Z",
+    replacement_due_period: "5 Years",
+    replacement_due_date: "2029-02-05T00:00:00Z",
+    operational_status: "Active",
+    disposition_status: "In Use"
+  },
+  {
+    id: 2,
+    asset_id: "AST005678",
+    serial_number: "DES005678",
+    hardware_type: "Desktop",
+    model_number: "HP EliteDesk 800",
+    owner_fullname: "Sarah Johnson",
+    hostname: "DESKTOP-SJ002",
+    p_number: "P005678",
+    cadre: "Manager",
+    department: "Finance",
+    section: "Accounting",
+    building: "Finance Block",
+    vendor: "HP Inc.",
+    po_number: "PO-2024-002",
+    po_date: "2024-03-20T00:00:00Z",
+    dc_number: "DC-2024-002",
+    dc_date: "2024-04-05T00:00:00Z",
+    assigned_date: "2024-04-10T00:00:00Z",
+    replacement_due_period: "4 Years",
+    replacement_due_date: "2028-04-10T00:00:00Z",
+    operational_status: "Active",
+    disposition_status: "In Use"
+  },
+  {
+    id: 3,
+    asset_id: "AST009876",
+    serial_number: "MON009876",
+    hardware_type: "Monitor",
+    model_number: "Samsung 27-inch",
+    owner_fullname: "Mike Wilson",
+    hostname: "N/A",
+    p_number: "P009876",
+    cadre: "Staff",
+    department: "Marketing",
+    section: "Digital",
+    building: "Marketing Wing",
+    vendor: "Samsung Electronics",
+    po_number: "PO-2024-003",
+    po_date: "2024-05-10T00:00:00Z",
+    dc_number: "DC-2024-003",
+    dc_date: "2024-05-25T00:00:00Z",
+    assigned_date: "2024-06-01T00:00:00Z",
+    replacement_due_period: "6 Years",
+    replacement_due_date: "2030-06-01T00:00:00Z",
+    operational_status: "Active",
+    disposition_status: "In Use"
+  }
+];
 
-import {
-  useGetAllAssets,
-  useMarkAssetSurplus,
-  useUpdateAsset,
-  useExportAssets,
-  useCheckExpiringAssets  // ✅ NEW: Import the new hook
-} from "../../api/client/asset";
-import { useAllCategories } from '../../api/client/category';
-import { useGetCurrentUser } from '../../api/client/user';
-import { toast } from 'react-toastify';
+// Dummy filter options
+const DUMMY_FILTER_OPTIONS = {
+  departments: ["IT Support", "Finance", "Marketing", "HR", "Engineering"],
+  hardware_types: ["Laptop", "Desktop", "Monitor", "Printer", "Server"],
+  cadres: ["Officer", "Manager", "Staff", "Executive"],
+  buildings: ["Main Building", "Finance Block", "Marketing Wing", "IT Center"],
+  sections: ["Hardware", "Software", "Accounting", "Digital", "Recruitment"],
+  operational_statuses: ["Active", "Inactive", "Maintenance"],
+  disposition_statuses: ["In Use", "Available", "Surplus", "Under Repair"]
+};
+
+// Dummy categories
+const DUMMY_CATEGORIES = {
+  department: DUMMY_FILTER_OPTIONS.departments,
+  section: DUMMY_FILTER_OPTIONS.sections,
+  hardware_type: DUMMY_FILTER_OPTIONS.hardware_types,
+  cadre: DUMMY_FILTER_OPTIONS.cadres,
+  building: DUMMY_FILTER_OPTIONS.buildings
+};
 
 function Inventory() {
   const [loading, setLoading] = useState(false);
@@ -30,11 +113,13 @@ function Inventory() {
   const [editingAsset, setEditingAsset] = useState(null);
   const [transferringAsset, setTransferringAsset] = useState(null);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
-  
-  // ✅ NEW: Search query state (removed debounced search)
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [checkingExpiry, setCheckingExpiry] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
   
-  // ✅ OPTIMIZED: Filters state with better structure
   const [filters, setFilters] = useState({
     search: "",
     department: "",
@@ -51,7 +136,7 @@ function Inventory() {
     dc_date_from: "",
     dc_date_to: "",
     page: 1,
-    limit: 50, // ✅ Increased for better UX
+    limit: 50,
   });
 
   const [sortConfig, setSortConfig] = useState({
@@ -59,48 +144,65 @@ function Inventory() {
     direction: "desc",
   });
 
-  // ✅ NEW: Fetch filter options from database
-  const { 
-    data: filterOptions, 
-    isLoading: filterOptionsLoading 
-  } = useGetFilterOptions();
+  // Simulate filtered and paginated data
+  const { assets, total, page, limit, fetched } = useMemo(() => {
+    let filteredData = [...DUMMY_ASSETS];
 
-  // ✅ Create filters object for API call (using direct search query)
-  const apiFilters = useMemo(() => ({
-    ...filters,
-    search: searchQuery, // Use direct search query
-  }), [filters, searchQuery]);
+    // Apply search filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      filteredData = filteredData.filter(asset =>
+        asset.asset_id?.toLowerCase().includes(searchLower) ||
+        asset.serial_number?.toLowerCase().includes(searchLower) ||
+        asset.hardware_type?.toLowerCase().includes(searchLower) ||
+        asset.owner_fullname?.toLowerCase().includes(searchLower) ||
+        asset.department?.toLowerCase().includes(searchLower) ||
+        asset.model_number?.toLowerCase().includes(searchLower)
+      );
+    }
 
-  // ✅ OPTIMIZED: Single API call with server-side filtering
-  const { 
-    data: assets, 
-    total, 
-    page, 
-    limit, 
-    fetched,
-    isLoading: apiLoading, 
-    isFetching,
-    error: apiError 
-  } = useGetAllAssets(apiFilters);
+    // Apply other filters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && !['search', 'page', 'limit', 'po_date_from', 'po_date_to', 'assigned_date_from', 'assigned_date_to', 'dc_date_from', 'dc_date_to'].includes(key)) {
+        filteredData = filteredData.filter(asset => 
+          asset[key]?.toLowerCase().includes(value.toLowerCase())
+        );
+      }
+    });
 
-  const { markSurplus } = useMarkAssetSurplus();
-  const { data: user } = useGetCurrentUser();
-  const { updateAsset, isLoading: updateLoading } = useUpdateAsset();
-  const { combinedOptions: categories } = useAllCategories([
-    "department",
-    "section", 
-    "hardware_type",
-    "cadre",
-    "building"
-  ]);
+    // Apply sorting
+    filteredData.sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
 
-  // ✅ Export hook
-  const { exportAssets: fetchExportData, isLoading: exportLoading } = useExportAssets();
+      if (aValue == null) aValue = "";
+      if (bValue == null) bValue = "";
 
-  // ✅ NEW: Expiring assets check hook
-  const { checkExpiringAssets, isLoading: checkingExpiry } = useCheckExpiringAssets();
+      if (sortConfig.direction === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
 
-  // ✅ OPTIMIZED: Date formatting functions
+    const totalRecords = filteredData.length;
+    const currentPage = filters.page;
+    const pageLimit = filters.limit;
+
+    // Apply pagination
+    const startIndex = (currentPage - 1) * pageLimit;
+    const endIndex = startIndex + pageLimit;
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+
+    return {
+      assets: paginatedData,
+      total: totalRecords,
+      page: currentPage,
+      limit: pageLimit,
+      fetched: totalRecords
+    };
+  }, [searchQuery, filters, sortConfig]);
+
   const formatDateToDDMMYYYY = useCallback((dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -111,38 +213,38 @@ function Inventory() {
     return `${day}-${month}-${year}`;
   }, []);
 
-  // ✅ UPDATED: Handle filter changes with improved search handling
   const handleFilterChange = useCallback((key, value) => {
     if (key === 'search') {
-      // Don't update filters for search, just set the query
       setSearchQuery(value);
       setFilters(prev => ({
         ...prev,
         search: value,
-        page: 1, // Reset to page 1 for new search
+        page: 1,
       }));
     } else {
       setFilters(prev => ({
         ...prev,
         [key]: value,
-        page: key === 'page' ? value : 1, // Reset to page 1 for new filters
+        page: key === 'page' ? value : 1,
       }));
     }
   }, []);
 
-  // ✅ NEW: Handle search execution
   const handleSearch = useCallback((searchValue) => {
-    setSearchQuery(searchValue);
-    setFilters(prev => ({
-      ...prev,
-      search: searchValue,
-      page: 1
-    }));
+    setIsFetching(true);
+    setTimeout(() => {
+      setSearchQuery(searchValue);
+      setFilters(prev => ({
+        ...prev,
+        search: searchValue,
+        page: 1
+      }));
+      setIsFetching(false);
+    }, 500);
   }, []);
 
-  // ✅ UPDATED: Clear filters with search query
   const clearFilters = useCallback(() => {
-    setSearchQuery(""); // Clear search query
+    setSearchQuery("");
     setFilters({
       search: "",
       department: "",
@@ -163,13 +265,13 @@ function Inventory() {
     });
   }, []);
 
-  // ✅ OPTIMIZED: Pagination handlers
   const goToPage = useCallback((pageNumber) => {
     handleFilterChange('page', pageNumber);
   }, [handleFilterChange]);
 
   const goToNextPage = useCallback(() => {
-    if (page < Math.ceil(total / limit)) {
+    const totalPages = Math.ceil(total / limit);
+    if (page < totalPages) {
       handleFilterChange('page', page + 1);
     }
   }, [page, total, limit, handleFilterChange]);
@@ -180,84 +282,16 @@ function Inventory() {
     }
   }, [page, handleFilterChange]);
 
-  // ✅ NEW: Handle expiring assets check
   const handleCheckExpiringAssets = useCallback(() => {
-    checkExpiringAssets({
-      onSuccess: (result) => {
-        toast.success(`Expiry check completed! ${result.updated || 0} assets updated to "Nearing Replacement"`);
-      },
-      onError: (error) => {
-        console.error('Expiry check failed:', error);
-        toast.error('Failed to check expiring assets');
-      }
-    });
-  }, [checkExpiringAssets]);
+    setCheckingExpiry(true);
+    setTimeout(() => {
+      setCheckingExpiry(false);
+      // Simulate toast notification
+      alert('Expiry check completed! 0 assets updated to "Nearing Replacement"');
+    }, 2000);
+  }, []);
 
-  // ✅ FIXED: Export functions with proper error handling
-  const exportToPDF = useCallback(async () => {
-    if (exportLoading) return;
-    
-    console.log('📄 Starting PDF export with filters:', apiFilters);
-    
-    fetchExportData(apiFilters, {
-      onSuccess: (exportData) => {
-        console.log(`📄 Generating PDF with ${exportData.length} assets`);
-        if (exportData && exportData.length > 0) {
-          generatePDF(exportData);
-        } else {
-          toast.warn('No data available for export');
-        }
-      },
-      onError: (error) => {
-        console.error('PDF export failed:', error);
-        toast.error('Failed to export PDF');
-      }
-    });
-  }, [exportLoading, fetchExportData, apiFilters]);
-
-  const exportToCSV = useCallback(async () => {
-    if (exportLoading) return;
-    
-    console.log('📊 Starting CSV export with filters:', apiFilters);
-    
-    fetchExportData(apiFilters, {
-      onSuccess: (exportData) => {
-        console.log(`📊 Generating CSV with ${exportData.length} assets`);
-        if (exportData && exportData.length > 0) {
-          generateCSV(exportData);
-        } else {
-          toast.warn('No data available for export');
-        }
-      },
-      onError: (error) => {
-        console.error('CSV export failed:', error);
-        toast.error('Failed to export CSV');
-      }
-    });
-  }, [exportLoading, fetchExportData, apiFilters]);
-
-  const exportToXLSX = useCallback(async () => {
-    if (exportLoading) return;
-    
-    console.log('📈 Starting Excel export with filters:', apiFilters);
-    
-    fetchExportData(apiFilters, {
-      onSuccess: (exportData) => {
-        console.log(`📈 Generating Excel with ${exportData.length} assets`);
-        if (exportData && exportData.length > 0) {
-          generateExcel(exportData);
-        } else {
-          toast.warn('No data available for export');
-        }
-      },
-      onError: (error) => {
-        console.error('Excel export failed:', error);
-        toast.error('Failed to export Excel');
-      }
-    });
-  }, [exportLoading, fetchExportData, apiFilters]);
-
-  // ✅ FIXED: PDF Generation with complete column headers
+  // Export functions
   const generatePDF = useCallback((exportData) => {
     try {
       const doc = new jsPDF('landscape', 'mm', 'a3');
@@ -267,20 +301,6 @@ function Inventory() {
       doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 25);
       doc.text(`Total Assets: ${exportData.length}`, 14, 32);
       
-      // Show applied filters
-      const activeFilters = Object.entries(filters)
-        .filter(([key, value]) => value !== "" && !['page', 'limit'].includes(key))
-        .map(([key, value]) => `${key.replace('_', ' ')}: ${value}`);
-      
-      let yPosition = 39;
-      if (activeFilters.length > 0) {
-        doc.text('Applied Filters: ' + activeFilters.join(', '), 14, yPosition);
-        yPosition += 10;
-      } else {
-        yPosition += 5;
-      }
-
-      // Complete column headers matching database schema
       const headers = [
         'ID', 'Asset ID', 'Serial Number', 'Hardware Type', 'Model Number', 'Owner Name', 'Hostname',
         'P Number', 'Cadre', 'Department', 'Section', 'Building', 'Vendor',
@@ -291,6 +311,8 @@ function Inventory() {
       const columnWidths = [8, 16, 20, 16, 18, 20, 24, 16, 16, 16, 14, 16, 20, 16, 14, 16, 14, 14, 20, 16, 18, 18];
       const startX = 8;
       const rowHeight = 6;
+
+      let yPosition = 39;
 
       // Draw header
       const drawTableHeader = (y) => {
@@ -336,7 +358,6 @@ function Inventory() {
           asset.operational_status || '', asset.disposition_status || ''
         ];
 
-        // Alternate row colors
         if (rowIndex % 2 === 0) {
           doc.setFillColor(249, 250, 251);
           let currentX = startX;
@@ -346,7 +367,6 @@ function Inventory() {
           });
         }
 
-        // Draw cell data
         let currentX = startX;
         rowData.forEach((cellData, colIndex) => {
           doc.rect(currentX, yPosition, columnWidths[colIndex], rowHeight);
@@ -366,14 +386,13 @@ function Inventory() {
       });
 
       doc.save(`asset-inventory-${new Date().toISOString().split('T')[0]}.pdf`);
-      toast.success(`PDF exported successfully with ${exportData.length} assets!`);
+      alert(`PDF exported successfully with ${exportData.length} assets!`);
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast.error('Failed to generate PDF');
+      alert('Failed to generate PDF');
     }
-  }, [filters, formatDateToDDMMYYYY]);
+  }, [formatDateToDDMMYYYY]);
 
-  // ✅ FIXED: CSV Generation with complete data
   const generateCSV = useCallback((exportData) => {
     try {
       const headers = [
@@ -401,14 +420,13 @@ function Inventory() {
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       saveAs(blob, `asset-inventory-${new Date().toISOString().split('T')[0]}.csv`);
-      toast.success(`CSV exported successfully with ${exportData.length} assets!`);
+      alert(`CSV exported successfully with ${exportData.length} assets!`);
     } catch (error) {
       console.error('CSV generation error:', error);
-      toast.error('Failed to generate CSV');
+      alert('Failed to generate CSV');
     }
   }, [formatDateToDDMMYYYY]);
 
-  // ✅ FIXED: Excel Generation with complete data
   const generateExcel = useCallback((exportData) => {
     try {
       const worksheetData = exportData.map(asset => ({
@@ -439,7 +457,6 @@ function Inventory() {
       const workbook = XLSX.utils.book_new();
       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
       
-      // Set column widths (22 columns total)
       const colWidths = [
         { wch: 8 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
         { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
@@ -451,12 +468,82 @@ function Inventory() {
       
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Asset Inventory');
       XLSX.writeFile(workbook, `asset-inventory-${new Date().toISOString().split('T')[0]}.xlsx`);
-      toast.success(`Excel exported successfully with ${exportData.length} assets!`);
+      alert(`Excel exported successfully with ${exportData.length} assets!`);
     } catch (error) {
       console.error('Excel generation error:', error);
-      toast.error('Failed to generate Excel file');
+      alert('Failed to generate Excel file');
     }
   }, [formatDateToDDMMYYYY]);
+
+  const exportToPDF = useCallback(async () => {
+    if (exportLoading) return;
+    
+    setExportLoading(true);
+    setTimeout(() => {
+      // Use currently filtered data for export
+      const allFilteredData = [...DUMMY_ASSETS].filter(asset => {
+        if (searchQuery) {
+          const searchLower = searchQuery.toLowerCase();
+          return asset.asset_id?.toLowerCase().includes(searchLower) ||
+                 asset.serial_number?.toLowerCase().includes(searchLower) ||
+                 asset.hardware_type?.toLowerCase().includes(searchLower) ||
+                 asset.owner_fullname?.toLowerCase().includes(searchLower) ||
+                 asset.department?.toLowerCase().includes(searchLower) ||
+                 asset.model_number?.toLowerCase().includes(searchLower);
+        }
+        return true;
+      });
+      
+      generatePDF(allFilteredData);
+      setExportLoading(false);
+    }, 1000);
+  }, [exportLoading, generatePDF, searchQuery]);
+
+  const exportToCSV = useCallback(async () => {
+    if (exportLoading) return;
+    
+    setExportLoading(true);
+    setTimeout(() => {
+      const allFilteredData = [...DUMMY_ASSETS].filter(asset => {
+        if (searchQuery) {
+          const searchLower = searchQuery.toLowerCase();
+          return asset.asset_id?.toLowerCase().includes(searchLower) ||
+                 asset.serial_number?.toLowerCase().includes(searchLower) ||
+                 asset.hardware_type?.toLowerCase().includes(searchLower) ||
+                 asset.owner_fullname?.toLowerCase().includes(searchLower) ||
+                 asset.department?.toLowerCase().includes(searchLower) ||
+                 asset.model_number?.toLowerCase().includes(searchLower);
+        }
+        return true;
+      });
+      
+      generateCSV(allFilteredData);
+      setExportLoading(false);
+    }, 1000);
+  }, [exportLoading, generateCSV, searchQuery]);
+
+  const exportToXLSX = useCallback(async () => {
+    if (exportLoading) return;
+    
+    setExportLoading(true);
+    setTimeout(() => {
+      const allFilteredData = [...DUMMY_ASSETS].filter(asset => {
+        if (searchQuery) {
+          const searchLower = searchQuery.toLowerCase();
+          return asset.asset_id?.toLowerCase().includes(searchLower) ||
+                 asset.serial_number?.toLowerCase().includes(searchLower) ||
+                 asset.hardware_type?.toLowerCase().includes(searchLower) ||
+                 asset.owner_fullname?.toLowerCase().includes(searchLower) ||
+                 asset.department?.toLowerCase().includes(searchLower) ||
+                 asset.model_number?.toLowerCase().includes(searchLower);
+        }
+        return true;
+      });
+      
+      generateExcel(allFilteredData);
+      setExportLoading(false);
+    }, 1000);
+  }, [exportLoading, generateExcel, searchQuery]);
 
   const handleExportSelect = useCallback((format) => {
     setShowExportDropdown(false);
@@ -468,7 +555,6 @@ function Inventory() {
     }
   }, [exportToPDF, exportToCSV, exportToXLSX]);
 
-  // ✅ OPTIMIZED: Asset management functions
   const startEditing = useCallback((asset) => {
     setEditingAsset({ ...asset });
   }, []);
@@ -480,33 +566,23 @@ function Inventory() {
   const saveAsset = useCallback(() => {
     if (!editingAsset) return;
 
-    updateAsset(
-      { id: editingAsset.id, data: editingAsset },
-      {
-        onSuccess: () => {
-          setEditingAsset(null);
-          setError(null);
-        },
-        onError: (err) => {
-          console.error(err);
-          setError(err.message);
-        }
-      }
-    );
-  }, [editingAsset, updateAsset]);
+    setUpdateLoading(true);
+    setTimeout(() => {
+      // Simulate save success
+      setEditingAsset(null);
+      setError(null);
+      setUpdateLoading(false);
+      alert('Asset updated successfully!');
+    }, 1000);
+  }, [editingAsset]);
 
   const markAsSurplus = useCallback((assetId) => {
     if (!window.confirm("Are you sure you want to mark this asset as surplus?")) return;
-
-    markSurplus(assetId, {
-      onError: (err) => {
-        console.error("Failed to mark asset as surplus:", err);
-      },
-      onSuccess: () => {
-        console.log("Asset marked as surplus successfully:", assetId);
-      },
-    });
-  }, [markSurplus]);
+    
+    setTimeout(() => {
+      alert(`Asset ${assetId} marked as surplus successfully!`);
+    }, 500);
+  }, []);
 
   const startTransfer = useCallback((asset) => {
     setTransferringAsset({
@@ -532,12 +608,10 @@ function Inventory() {
   const handleTransferSuccess = useCallback(() => {
     setTransferringAsset(null);
     setError(null);
-    // ✅ Trigger refetch to get updated data
-    // The query will automatically refetch due to invalidation
+    alert('Asset transferred successfully!');
   }, []);
 
-  // ✅ OPTIMIZED: Loading state with custom LoadingSpinner
-  if (apiLoading && !assets?.length) {
+  if (isLoading && !assets?.length) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LoadingSpinner 
@@ -548,7 +622,6 @@ function Inventory() {
     );
   }
 
-  // ✅ OPTIMIZED: Calculate pagination info
   const totalPages = Math.ceil(total / limit);
   const startItem = ((page - 1) * limit) + 1;
   const endItem = Math.min(page * limit, total);
@@ -566,7 +639,7 @@ function Inventory() {
       {transferringAsset && (
         <TransferModal
           transferringAsset={transferringAsset}
-          categories={categories}
+          categories={DUMMY_CATEGORIES}
           onTransferSuccess={handleTransferSuccess}
           cancelTransfer={cancelTransfer}
           setError={setError}
@@ -580,26 +653,23 @@ function Inventory() {
           </div>
         )}
         
-        {/* ✅ UPDATED: Filter Bar with database filter options */}
         <FilterBar
           filters={filters}
           handleFilterChange={handleFilterChange}
           clearFilters={clearFilters}
-          filterOptions={filterOptions} // Pass database filter options
+          filterOptions={DUMMY_FILTER_OPTIONS}
           filteredAssets={assets}
           showExportDropdown={showExportDropdown}
           setShowExportDropdown={setShowExportDropdown}
           handleExportSelect={handleExportSelect}
           total={total}
           fetched={fetched}
-          onSearch={handleSearch} // Pass search handler
-          isLoading={filterOptionsLoading} // Pass loading state for filter options
-          // ✅ NEW: Pass expiring assets props
+          onSearch={handleSearch}
+          isLoading={false}
           checkExpiringAssets={handleCheckExpiringAssets}
           checkingExpiry={checkingExpiry}
         />
 
-        {/* ✅ NEW: Pagination Info & Controls (Top) */}
         <div className="bg-white rounded-lg shadow p-4 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="text-sm text-gray-600">
@@ -613,7 +683,6 @@ function Inventory() {
               )}
             </div>
             
-            {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex items-center space-x-2">
                 <button
@@ -640,15 +709,14 @@ function Inventory() {
           </div>
         </div>
         
-        {/* ✅ OPTIMIZED: Assets Table */}
         <AssetsTable
-          filteredAssets={assets} // Only current page assets
+          filteredAssets={assets}
           editingAsset={editingAsset}
           setEditingAsset={setEditingAsset}
-          categories={categories}
+          categories={DUMMY_CATEGORIES}
           userRole={userRole}
           sortConfig={sortConfig}
-          handleSort={() => {}} // Sorting disabled for now (can be implemented server-side)
+          handleSort={() => {}}
           startEditing={startEditing}
           cancelEditing={cancelEditing}
           saveAsset={saveAsset}
@@ -657,7 +725,6 @@ function Inventory() {
           formatDateToDDMMYYYY={formatDateToDDMMYYYY}
         />
 
-        {/* ✅ NEW: Pagination Controls (Bottom) */}
         {totalPages > 1 && (
           <div className="bg-white rounded-lg shadow p-4 mt-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -681,7 +748,6 @@ function Inventory() {
                   Previous
                 </button>
                 
-                {/* Page Numbers */}
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   const pageNum = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
                   if (pageNum > totalPages) return null;
@@ -719,6 +785,28 @@ function Inventory() {
             </div>
           </div>
         )}
+
+        {/* Demo Notice */}
+        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <i className="fas fa-info-circle text-blue-600 text-xl"></i>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                Demo Version
+              </h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>This is a demo version with sample data for demonstration purposes</li>
+                  <li>All functionality works including search, filtering, sorting, and export features</li>
+                  <li>Transfer and edit operations show confirmation messages but don't modify actual data</li>
+                  <li>PDF, CSV, and Excel exports work with the sample data</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
       
       <Footer />

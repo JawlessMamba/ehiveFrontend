@@ -18,12 +18,75 @@ import {
   XCircle,
 } from "lucide-react";
 
-import {
-  useAddCategory,
-  useDeleteCategory,
-  useAllCategories,
-} from "../../api/client/category";
-import { useGetCurrentUser } from "../../api/client/user";
+// Dummy data for categories
+const INITIAL_DUMMY_DATA = {
+  hardware_type: [
+    { id: 1, value: "Desktop Computer" },
+    { id: 2, value: "Laptop" },
+    { id: 3, value: "Server" },
+    { id: 4, value: "Monitor" },
+    { id: 5, value: "Printer" },
+  ],
+  department: [
+    { id: 1, value: "IT Department" },
+    { id: 2, value: "Human Resources" },
+    { id: 3, value: "Finance" },
+    { id: 4, value: "Marketing" },
+    { id: 5, value: "Operations" },
+  ],
+  building: [
+    { id: 1, value: "Main Building" },
+    { id: 2, value: "Annex Building" },
+    { id: 3, value: "Warehouse" },
+    { id: 4, value: "Data Center" },
+  ],
+  section: [
+    { id: 1, value: "Ground Floor" },
+    { id: 2, value: "First Floor" },
+    { id: 3, value: "Second Floor" },
+    { id: 4, value: "Basement" },
+  ],
+  model: [
+    { id: 1, value: "Dell OptiPlex 7070" },
+    { id: 2, value: "HP EliteDesk 800" },
+    { id: 3, value: "Lenovo ThinkCentre M720" },
+    { id: 4, value: "MacBook Pro 13\"" },
+  ],
+  vendor: [
+    { id: 1, value: "Dell Technologies" },
+    { id: 2, value: "HP Inc." },
+    { id: 3, value: "Lenovo" },
+    { id: 4, value: "Apple" },
+    { id: 5, value: "Microsoft" },
+  ],
+  cadre: [
+    { id: 1, value: "Manager" },
+    { id: 2, value: "Senior Developer" },
+    { id: 3, value: "Junior Developer" },
+    { id: 4, value: "System Administrator" },
+    { id: 5, value: "Business Analyst" },
+  ],
+  disposition_status: [
+    { id: 1, value: "Active" },
+    { id: 2, value: "Disposed" },
+    { id: 3, value: "Retired" },
+    { id: 4, value: "Under Maintenance" },
+  ],
+  operational_status: [
+    { id: 1, value: "Operational" },
+    { id: 2, value: "Non-Operational" },
+    { id: 3, value: "Under Repair" },
+    { id: 4, value: "Pending Setup" },
+  ],
+};
+
+// Dummy user data
+const DUMMY_USER = {
+  id: 1,
+  name: "Admin User",
+  role: "admin",
+  email: "admin@example.com"
+};
 
 // Category configuration with consistent styling
 const CATEGORY_CONFIGS = {
@@ -55,23 +118,14 @@ function Categories() {
   const [userRole, setUserRole] = useState("admin");
   const [selectedCategory, setSelectedCategory] = useState("hardware_type");
   const [newCategoryValue, setNewCategoryValue] = useState("");
+  const [combinedOptions, setCombinedOptions] = useState(INITIAL_DUMMY_DATA);
+  const [isLoading, setIsLoading] = useState(false);
+  const [nextId, setNextId] = useState(100); // For generating new IDs
 
-  // Fetch all categories
-  const { combinedOptions, isLoading, isError } = useAllCategories(Object.keys(CATEGORY_CONFIGS));
-  
-  // 🔥 FIX 1: Add loading state for user
-  const { data: user, isLoading: userLoading } = useGetCurrentUser();
-  
-
-  // Mutations
-  const addCategoryMutation = useAddCategory(selectedCategory, {
-    onSuccess: () => setNewCategoryValue(""),
-    onError: (error) => console.error("Failed to add category:", error),
-  });
-
-  const deleteCategoryMutation = useDeleteCategory(selectedCategory, {
-    onError: (error) => console.error("Failed to delete category:", error),
-  });
+  // Dummy user data - simulating the API response
+  const user = DUMMY_USER;
+  const userLoading = false;
+  const isError = false;
 
   const getCurrentConfig = () => CATEGORY_CONFIGS[selectedCategory];
   const getCurrentItems = () => combinedOptions[selectedCategory] ?? [];
@@ -82,14 +136,41 @@ function Categories() {
     if (!trimmedValue) return;
     const exists = getCurrentItems().some(item => item.value.toLowerCase() === trimmedValue.toLowerCase());
     if (exists) return alert("This category already exists!");
-    addCategoryMutation.mutate(trimmedValue);
+    
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      const newItem = {
+        id: nextId,
+        value: trimmedValue
+      };
+      
+      setCombinedOptions(prev => ({
+        ...prev,
+        [selectedCategory]: [...prev[selectedCategory], newItem]
+      }));
+      
+      setNextId(prev => prev + 1);
+      setNewCategoryValue("");
+      setIsLoading(false);
+    }, 500);
   };
 
-const handleDeleteCategory = (id) => {
-  if (window.confirm("Are you sure you want to delete this category?")) {
-    deleteCategoryMutation.mutate({ category: selectedCategory, id });
-  }
-};
+  const handleDeleteCategory = (id) => {
+    if (window.confirm("Are you sure you want to delete this category?")) {
+      setIsLoading(true);
+      
+      // Simulate API call delay
+      setTimeout(() => {
+        setCombinedOptions(prev => ({
+          ...prev,
+          [selectedCategory]: prev[selectedCategory].filter(item => item.id !== id)
+        }));
+        setIsLoading(false);
+      }, 300);
+    }
+  };
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -99,7 +180,7 @@ const handleDeleteCategory = (id) => {
   };
 
   // 🔥 FIX 2: Show loading if either categories or user is loading
-  if (isLoading || userLoading) {
+  if (isLoading && getCurrentItems().length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LoadingSpinner size="lg" text="Loading categories..." />
@@ -182,15 +263,15 @@ const handleDeleteCategory = (id) => {
                 onKeyDown={handleKeyPress}
                 placeholder={`Add new ${currentConfig.title.toLowerCase().slice(0, -1)}`}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={addCategoryMutation.isLoading}
+                disabled={isLoading}
               />
               <button
                 onClick={handleAddCategory}
-                disabled={addCategoryMutation.isLoading || !newCategoryValue.trim()}
+                disabled={isLoading || !newCategoryValue.trim()}
                 className={`${colorVariant.button} text-white px-6 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <PlusCircle size={18} />
-                <span>{addCategoryMutation.isLoading ? "Adding..." : "Add"}</span>
+                <span>{isLoading ? "Adding..." : "Add"}</span>
               </button>
             </div>
           )}
@@ -212,7 +293,7 @@ const handleDeleteCategory = (id) => {
                   {user?.role === "admin" && (
                     <button
                       onClick={() => handleDeleteCategory(item.id)}
-                      disabled={deleteCategoryMutation.isLoading}
+                      disabled={isLoading}
                       className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete category"
                     >
