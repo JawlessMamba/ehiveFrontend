@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Users
 } from 'lucide-react';
-import { useGetCurrentUser } from "../../../api/client/user";
 
 const ICONS = {
   home: Home,
@@ -164,7 +163,13 @@ DropdownItem.displayName = 'DropdownItem';
 function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { data: user } = useGetCurrentUser();
+  
+  // Demo user data - replace API call with local data
+  const user = useMemo(() => ({
+    name: "Admin User",
+    role: "admin"
+  }), []);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
@@ -336,6 +341,9 @@ function Navigation() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white truncate">{user.name || 'User'}</p>
                       <p className="text-xs text-blue-200/60 capitalize">{user.role}</p>
+                      <div className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium mt-1 inline-block">
+                        Demo Mode
+                      </div>
                     </div>
                   </div>
                 </div>

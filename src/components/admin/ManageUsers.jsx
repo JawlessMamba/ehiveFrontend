@@ -1,14 +1,60 @@
 import { useForm } from "react-hook-form";
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // Add this import
-import { useSignUp, useGetAllUsers, useChangeUserPassword, useToggleUserStatus } from "../../../api/client/user";
+import { useNavigate } from "react-router-dom";
 import { Search, Filter, ArrowLeft } from "lucide-react";
+
+// Dummy data for demo
+const initialDummyUsers = [
+  {
+    id: 1,
+    name: "John Doe",
+    email: "john.doe@example.com",
+    role: "admin",
+    status: "active",
+    created_at: "2024-01-15T10:30:00Z"
+  },
+  {
+    id: 2,
+    name: "Jane Smith",
+    email: "jane.smith@example.com",
+    role: "user",
+    status: "active",
+    created_at: "2024-02-20T14:15:00Z"
+  },
+  {
+    id: 3,
+    name: "Mike Johnson",
+    email: "mike.johnson@example.com",
+    role: "user",
+    status: "blocked",
+    created_at: "2024-03-10T09:45:00Z"
+  },
+  {
+    id: 4,
+    name: "Sarah Williams",
+    email: "sarah.williams@example.com",
+    role: "admin",
+    status: "active",
+    created_at: "2024-01-25T16:20:00Z"
+  },
+  {
+    id: 5,
+    name: "Tom Brown",
+    email: "tom.brown@example.com",
+    role: "user",
+    status: "active",
+    created_at: "2024-04-05T11:10:00Z"
+  }
+];
 
 export default function ManageUsers({ onBack }) {
   const { register, handleSubmit, reset, watch } = useForm();
-  const navigate = useNavigate(); // Add this hook
+  const navigate = useNavigate();
+  
+  // Local state management for demo
+  const [users, setUsers] = useState(initialDummyUsers);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null); // For block/unblock confirmation
+  const [confirmAction, setConfirmAction] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -16,21 +62,17 @@ export default function ManageUsers({ onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [isLoading, setIsLoading] = useState(false);
   
   const watchPassword = watch("password", "");
   const watchConfirmPassword = watch("confirmPassword", "");
-  
-  const signUpMutation = useSignUp();
-  const { data: usersData, isLoading } = useGetAllUsers();
-  const changePasswordMutation = useChangeUserPassword();
-  const toggleStatusMutation = useToggleUserStatus();
 
-  // Handle back navigation - use the prop if provided, otherwise use navigate
+  // Handle back navigation
   const handleBackClick = () => {
     if (onBack) {
       onBack();
     } else {
-      navigate("/"); // Navigate to dashboard
+      navigate("/");
     }
   };
 
@@ -46,9 +88,7 @@ export default function ManageUsers({ onBack }) {
 
   // Filter users based on search term, role filter, and status filter
   const filteredUsers = useMemo(() => {
-    if (!usersData?.users) return [];
-    
-    return usersData.users.filter(user => {
+    return users.filter(user => {
       const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            user.email.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
@@ -56,37 +96,53 @@ export default function ManageUsers({ onBack }) {
       const matchesStatus = statusFilter === "all" || userStatus === statusFilter;
       return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [usersData?.users, searchTerm, roleFilter, statusFilter]);
+  }, [users, searchTerm, roleFilter, statusFilter]);
 
   const onSubmit = (data) => {
     setCreateUserError("");
+    setIsLoading(true);
 
     // Validate password if provided
     if (data.password && !validatePassword(data.password)) {
       setCreateUserError("Password must be at least 6 characters long with 1 uppercase, 1 lowercase, 1 number, and 1 special character");
+      setIsLoading(false);
       return;
     }
 
     // Check if passwords match
     if (data.password !== data.confirmPassword) {
       setCreateUserError("Passwords do not match");
+      setIsLoading(false);
       return;
     }
 
-    // Remove confirmPassword from the data before sending to API
-    const { confirmPassword, ...submitData } = data;
+    // Check if email already exists
+    if (users.some(user => user.email.toLowerCase() === data.email.toLowerCase())) {
+      setCreateUserError("Email already exists");
+      setIsLoading(false);
+      return;
+    }
 
-    signUpMutation.mutate(submitData, {
-      onSuccess: () => {
-        reset();
-        setCreateUserError("");
-        // Refresh users list
-        window.location.reload();
-      },
-      onError: (error) => {
-        setCreateUserError(error.message || "Failed to create user");
-      }
-    });
+    // Simulate API delay
+    setTimeout(() => {
+      // Create new user with dummy data
+      const newUser = {
+        id: Date.now(), // Simple ID generation for demo
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        status: "active",
+        created_at: new Date().toISOString()
+      };
+
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      reset();
+      setCreateUserError("");
+      setIsLoading(false);
+      
+      // Show success message (you could add toast here)
+      alert("User created successfully!");
+    }, 1000);
   };
 
   const handleChangePassword = (userId) => {
@@ -107,56 +163,60 @@ export default function ManageUsers({ onBack }) {
       return;
     }
 
-    changePasswordMutation.mutate({
-      userId: userId,
-      newPassword: newPassword
-    }, {
-      onSuccess: () => {
-        setSelectedUser(null);
-        setNewPassword("");
-        setConfirmPassword("");
-        setPasswordError("");
-      }
-    });
+    // Simulate API call
+    setIsLoading(true);
+    setTimeout(() => {
+      setSelectedUser(null);
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
+      setIsLoading(false);
+      alert("Password changed successfully!");
+    }, 1000);
   };
 
   const handleToggleUserStatus = () => {
     if (!confirmAction) return;
     
-    toggleStatusMutation.mutate({ userId: confirmAction.userId }, {
-      onSuccess: () => {
-        setConfirmAction(null);
-      },
-      onError: () => {
-        setConfirmAction(null);
-      }
-    });
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === confirmAction.userId 
+            ? { ...user, status: user.status === 'blocked' ? 'active' : 'blocked' }
+            : user
+        )
+      );
+      setConfirmAction(null);
+      setIsLoading(false);
+      alert(`User ${confirmAction.action}ed successfully!`);
+    }, 1000);
   };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header with Back Button - Removed heading */}
+        {/* Header with Back Button */}
         <div className="mb-6 flex items-center gap-4">
           <button
-            onClick={handleBackClick} // Use the new handler
+            onClick={handleBackClick}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
             <ArrowLeft size={20} />
             <span className="text-sm font-medium">Dashboard</span>
           </button>
+          <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+            Demo Mode - Using Local Data
+          </div>
         </div>
         
         <div className="grid lg:grid-cols-5 gap-6">
-          {/* Left Side - Sign Up Form (Compact) */}
+          {/* Left Side - Sign Up Form */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl p-4 h-fit">
             <h2 className="text-lg font-bold text-gray-800 mb-3">Create New User</h2>
             
@@ -236,15 +296,15 @@ export default function ManageUsers({ onBack }) {
 
               <button
                 type="submit"
-                disabled={signUpMutation.isPending}
+                disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2 px-3 rounded-md text-sm font-semibold hover:from-blue-600 hover:to-indigo-700 transition duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
               >
-                {signUpMutation.isPending ? "Creating..." : "Create User"}
+                {isLoading ? "Creating..." : "Create User"}
               </button>
             </form>
           </div>
 
-          {/* Right Side - Users List (Compact Height) */}
+          {/* Right Side - Users List */}
           <div className="lg:col-span-3 bg-white rounded-2xl shadow-xl p-4 h-[500px] flex flex-col">
             <div className="flex-shrink-0">
               <h2 className="text-lg font-bold text-gray-800 mb-3">Users Management</h2>
@@ -340,14 +400,14 @@ export default function ManageUsers({ onBack }) {
                             action: user.status === 'blocked' ? 'unblock' : 'block',
                             currentStatus: user.status || 'active'
                           })}
-                          disabled={toggleStatusMutation.isPending}
+                          disabled={isLoading}
                           className={`px-2 py-1 rounded-md text-xs font-medium transition duration-200 ${
                             user.status === 'blocked'
                               ? 'bg-green-500 hover:bg-green-600 text-white'
                               : 'bg-red-500 hover:bg-red-600 text-white'
                           }`}
                         >
-                          {toggleStatusMutation.isPending ? '...' : (user.status === 'blocked' ? 'Unblock' : 'Block')}
+                          {isLoading ? '...' : (user.status === 'blocked' ? 'Unblock' : 'Block')}
                         </button>
                       </div>
                     </div>
@@ -373,14 +433,14 @@ export default function ManageUsers({ onBack }) {
             <div className="flex gap-3">
               <button
                 onClick={handleToggleUserStatus}
-                disabled={toggleStatusMutation.isPending}
+                disabled={isLoading}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition duration-200 disabled:opacity-50 ${
                   confirmAction.action === 'block'
                     ? 'bg-red-500 hover:bg-red-600 text-white'
                     : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               >
-                {toggleStatusMutation.isPending ? "Processing..." : `Yes, ${confirmAction.action}`}
+                {isLoading ? "Processing..." : `Yes, ${confirmAction.action}`}
               </button>
               
               <button
@@ -394,7 +454,7 @@ export default function ManageUsers({ onBack }) {
         </div>
       )}
 
-      {/* Change Password Modal - Blurred Background */}
+      {/* Change Password Modal */}
       {selectedUser && (
         <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white/90 backdrop-blur-sm border border-white/50 shadow-2xl rounded-xl p-6 w-80 max-w-sm mx-4">
@@ -443,10 +503,10 @@ export default function ManageUsers({ onBack }) {
               <div className="flex gap-2 pt-3">
                 <button
                   onClick={() => handleChangePassword(selectedUser.id)}
-                  disabled={changePasswordMutation.isPending}
+                  disabled={isLoading}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-2 px-3 rounded-md text-sm font-medium hover:from-blue-600 hover:to-indigo-700 transition duration-200 disabled:opacity-50"
                 >
-                  {changePasswordMutation.isPending ? "Changing..." : "Change"}
+                  {isLoading ? "Changing..." : "Change"}
                 </button>
                 
                 <button
